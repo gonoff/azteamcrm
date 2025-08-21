@@ -65,4 +65,22 @@ class User extends Model
     {
         return $this->isAdmin() || $this->isProduction();
     }
+    
+    public function existsExcept($field, $value, $excludeId = null)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE {$field} = :value";
+        $params = ['value' => $value];
+        
+        if ($excludeId) {
+            $sql .= " AND id != :exclude_id";
+            $params['exclude_id'] = $excludeId;
+        }
+        
+        $stmt = $this->db->query($sql, $params);
+        if ($stmt) {
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $result['count'] > 0;
+        }
+        return false;
+    }
 }

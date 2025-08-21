@@ -50,9 +50,36 @@ class Controller
         if (session_status() === PHP_SESSION_NONE) {
             @session_start();
         }
+        
+        // Check if user is logged in
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('/login');
         }
+        
+        // Check session timeout (30 minutes of inactivity)
+        $timeout = 1800; // 30 minutes in seconds
+        $now = time();
+        
+        if (isset($_SESSION['last_activity'])) {
+            $elapsed = $now - $_SESSION['last_activity'];
+            
+            if ($elapsed > $timeout) {
+                // Session has timed out
+                $_SESSION = [];
+                if (isset($_COOKIE[session_name()])) {
+                    setcookie(session_name(), '', time() - 3600, '/');
+                }
+                session_destroy();
+                
+                // Start new session for message
+                session_start();
+                $_SESSION['login_error'] = 'Your session has expired. Please login again.';
+                $this->redirect('/login');
+            }
+        }
+        
+        // Update last activity time
+        $_SESSION['last_activity'] = $now;
     }
     
     protected function requireRole($role)

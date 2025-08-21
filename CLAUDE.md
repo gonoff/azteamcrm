@@ -6,17 +6,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AZTEAM CRM/ERP is a custom apparel and merchandise order management system built for tracking orders, production workflows, and financial transactions. The system handles personalized clothing and promotional products with various customization methods.
 
+**Current Phase**: Phase 1 (MVP) - User authentication and management complete, ready for order management implementation.
+
 ## System Architecture
 
 ### Technology Stack
-- **Backend**: PHP 8.x
+- **Backend**: PHP 8.x with custom MVC framework (no external dependencies)
 - **Database**: MySQL 8.0 / MariaDB 10.5+
+- **Frontend**: Bootstrap 5.1.3, Bootstrap Icons 1.8.1
 - **Environment**: XAMPP/LAMPP stack
 - **Web Root**: `/opt/lampp/htdocs/azteamcrm/`
+- **Color Scheme**: White, Black, Red theme
+
+### MVC Framework Structure
+```
+/app/Core/           # Custom framework classes
+├── Database.php     # PDO singleton with transaction support
+├── Model.php        # Active Record base with CRUD operations
+├── Controller.php   # Base controller with auth/CSRF/validation
+└── Router.php       # Pattern-based routing with parameter extraction
+
+/index.php          # Single entry point (routes via ?route= parameter)
+/bootstrap.php      # Application initialization and autoloading
+/.htaccess          # URL rewriting for clean URLs
+```
 
 ### Core Data Model
-- **Orders**: Client information, payment tracking, rush orders, dual-status system
-- **Line Items**: Individual products with supplier status and completion status tracking
+- **Orders**: Client information, payment tracking, rush orders, financial calculations
+- **Line Items**: Individual products with dual-status tracking (supplier + completion)
 - **Users**: Role-based authentication (administrator, production_team)
 
 ### Status Workflows
@@ -33,6 +50,10 @@ mysql -u root -p < azteam_database_schema.sql
 
 # Access MySQL via XAMPP
 /opt/lampp/bin/mysql -u root -p
+
+# Create .env file from example
+cp .env.example .env
+# Edit .env with your database credentials
 ```
 
 ### XAMPP/LAMPP Management
@@ -50,53 +71,136 @@ sudo /opt/lampp/lampp restart
 sudo /opt/lampp/lampp status
 ```
 
-### PHP Execution
+### Development Access
 ```bash
-# Run PHP scripts via XAMPP
-/opt/lampp/bin/php script.php
+# Application URL
+http://localhost/azteamcrm
+
+# Default login credentials
+Username: haniel
+Password: [set in database]
+# Note: Create additional users through the Users management interface
+
+# Session storage permissions (if needed)
+chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 ```
 
-## Implementation Phases
+## Current Implementation Status
 
-### Phase 1 (MVP - Current Focus)
-- User authentication and role management
-- Order creation with client information
-- Line item management with dual status tracking
-- Basic financial tracking (payment status, outstanding balance)
-- Order listing and basic search
+### ✅ Completed Features
+- **User Authentication System**
+  - Login/logout with session management
+  - Session timeout (30 minutes of inactivity)
+  - CSRF protection on all forms
+  - Password hashing with bcrypt
+  - Role-based access control (Administrator, Production Team)
 
-### Phase 2 (Operational Enhancement)
-- Production team dashboard
-- Status update workflows
+- **User Management Module**
+  - Full CRUD operations for users
+  - User listing with search functionality
+  - Create/edit user forms with validation
+  - User status management (active/inactive toggle)
+  - Profile page with password change
+  - Duplicate username/email validation
+  - Prevents self-deletion and self-deactivation
+
+- **Dashboard**
+  - Comprehensive statistics display
+  - Recent orders listing
+  - Urgent orders tracking
+  - Financial overview (revenue, outstanding balance)
+  - Order metrics (pending, rush, overdue)
+
+- **Core Framework**
+  - Custom MVC architecture
+  - Database models with Active Record pattern
+  - Router with parameter extraction (fixed for PHP 8+)
+  - Session-based authentication with security features
+
+### 🔴 Pending Implementation
+- Order CRUD views (`/app/Views/orders/`)
+- Line item management views (`/app/Views/line-items/`)
+- Controllers: LineItemController, ProductionController, ReportController
+- Production workflow interfaces
+- Financial reporting functionality
 - Advanced search and filtering
-- Basic financial reporting
 
-### Phase 3 (Growth Features)
-- Enhanced reporting capabilities
-- Performance metrics
-- System optimizations
+### Active Routes
+Working routes in `/config/routes.php`:
+- Authentication: `/login`, `/logout`
+- Dashboard: `/`, `/dashboard`
+- User Management: `/users`, `/users/create`, `/users/{id}/edit`, `/users/{id}/toggle-status`
+- Profile: `/profile`, `/profile/update-password`
 
-## Key Implementation Considerations
+Commented routes (pending implementation):
+- Orders: `/orders`, `/orders/create`, `/orders/{id}/edit`
+- Line Items: `/orders/{order_id}/line-items`
+- Production: `/production`
+- Reports: `/reports`
 
-### Security
-- All passwords must use bcrypt hashing (`password_hash()` in PHP)
-- Implement CSRF protection for all forms
-- Use prepared statements for all database queries
-- Session management with secure cookies
+## Key Architectural Patterns
 
-### Database Indexing
-Critical indexes are already defined in schema:
-- Client name, dates, and payment status for orders
-- Supplier and completion status for line items
-- Composite indexes for performance optimization
+### Request Flow
+1. All requests route through `/index.php` via `.htaccess` rewriting
+2. Router matches URL pattern and extracts parameters (using `array_values()` for PHP 8+ compatibility)
+3. Controller method handles business logic and auth checks
+4. Model performs database operations with prepared statements
+5. View renders HTML with Bootstrap components
+
+### Authentication Pattern
+```php
+// All protected controllers extend Controller and use:
+$this->requireAuth();        // Ensures user is logged in
+$this->requireRole('admin'); // Checks specific role
+$this->validateCSRF();       // Validates CSRF token in forms
+```
+
+### Model Patterns
+```php
+// Base Model methods available:
+$model->find($id);                    // Find by primary key
+$model->findAll();                    // Get all records
+$model->where($field, $op, $value);   // Simple where clause (returns array)
+$model->save($data);                  // Create or update based on primary key
+$model->delete();                     // Delete current record
+
+// User model specific methods:
+$user->authenticate($username, $pass); // Verify credentials
+$user->existsExcept($field, $val, $excludeId); // Check duplicates
+$user->setPassword($password);        // Hash password with bcrypt
+
+// Boolean handling for MySQL:
+$model->field = $value ? 1 : 0;       // Convert boolean to int for MySQL
+```
+
+### Form Handling Pattern
+```php
+// Controllers use validation helpers:
+$this->validate($data, [
+    'client_name' => 'required|string|max:255',
+    'due_date' => 'required|date|after:today'
+]);
+```
+
+## Business Domain Rules
+
+### Order Management
+- Rush orders: Due date within 7 days
+- Overdue: Past due date with incomplete items
+- Outstanding balance: Total value minus payments received
+- Orders link to multiple line items
+
+### Production Workflow
+- Line items track through dual status systems independently
+- Supplier status: External vendor fulfillment tracking
+- Completion status: Internal production progress
+- Both statuses must complete for item to be done
 
 ### User Roles
 - **Administrator**: Full system access, user management, financial reporting
 - **Production Team**: Update production/supplier status, view production queue
 
-### Product Classifications
-Supported product types: shirt, apron, scrub, hat, bag, beanie, business_card, yard_sign, car_magnet, greeting_card, door_hanger, magnet_business_card
-
-### Customization Methods
-Available methods: HTV, DFT, Embroidery, Sublimation, Printing Services
-Customization areas: Front, Back, Sleeve (can be multiple)
+### Product Types & Customization
+- **Products**: shirt, apron, scrub, hat, bag, beanie, business_card, yard_sign, car_magnet, greeting_card, door_hanger, magnet_business_card
+- **Methods**: HTV, DFT, Embroidery, Sublimation, Printing Services
+- **Areas**: Front, Back, Sleeve (multiple selections allowed)

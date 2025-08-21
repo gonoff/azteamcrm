@@ -57,6 +57,7 @@ class AuthController extends Controller
             $_SESSION['user_role'] = $authenticatedUser->role;
             $_SESSION['full_name'] = $authenticatedUser->getFullName();
             $_SESSION['logged_in_at'] = time();
+            $_SESSION['last_activity'] = time();
             
             // Regenerate session ID for security
             session_regenerate_id(true);

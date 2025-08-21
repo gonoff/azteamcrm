@@ -22,6 +22,18 @@
                                 <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
                         </li>
+                        <?php if ($_SESSION['user_role'] === 'administrator'): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/azteamcrm/users">
+                                <i class="bi bi-people"></i> Users
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/azteamcrm/profile">
+                                <i class="bi bi-person-circle"></i> My Profile
+                            </a>
+                        </li>
                         <?php /* Commented out - Controllers/Views not implemented yet
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/orders">
@@ -37,11 +49,6 @@
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/reports">
                                 <i class="bi bi-graph-up"></i> Reports
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/azteamcrm/users">
-                                <i class="bi bi-people"></i> Users
                             </a>
                         </li>
                         <?php endif; ?>

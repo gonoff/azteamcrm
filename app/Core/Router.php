@@ -55,7 +55,7 @@ class Router
                 $controllerInstance = new $controllerClass();
                 
                 if (method_exists($controllerInstance, $method)) {
-                    call_user_func_array([$controllerInstance, $method], $this->params);
+                    call_user_func_array([$controllerInstance, $method], array_values($this->params));
                 } else {
                     $this->sendNotFound("Method {$method} not found in {$controller}");
                 }

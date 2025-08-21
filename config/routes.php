@@ -29,13 +29,18 @@ return [
     // '/line-items/{id}/delete' => 'LineItemController@delete',
     // '/line-items/{id}/update-status' => 'LineItemController@updateStatus',
     
-    // Users - COMMENTED: Controller doesn't exist
-    // '/users' => 'UserController@index',
-    // '/users/create' => 'UserController@create',
-    // '/users/store' => 'UserController@store',
-    // '/users/{id}/edit' => 'UserController@edit',
-    // '/users/{id}/update' => 'UserController@update',
-    // '/users/{id}/delete' => 'UserController@delete',
+    // Users Management
+    '/users' => 'UserController@index',
+    '/users/create' => 'UserController@create',
+    '/users/store' => 'UserController@store',
+    '/users/{id}/edit' => 'UserController@edit',
+    '/users/{id}/update' => 'UserController@update',
+    '/users/{id}/delete' => 'UserController@delete',
+    '/users/{id}/toggle-status' => 'UserController@toggleStatus',
+    
+    // User Profile
+    '/profile' => 'UserController@profile',
+    '/profile/update-password' => 'UserController@updatePassword',
     
     // Production - COMMENTED: Controller doesn't exist
     // '/production' => 'ProductionController@index',
