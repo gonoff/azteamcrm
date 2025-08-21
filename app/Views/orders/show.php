@@ -109,14 +109,9 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Line Items</h5>
-                <?php /* Future implementation
                 <a href="/azteamcrm/orders/<?= $order->id ?>/line-items/create" class="btn btn-sm btn-success">
                     <i class="bi bi-plus"></i> Add Item
                 </a>
-                */ ?>
-                <button class="btn btn-sm btn-success" disabled>
-                    <i class="bi bi-plus"></i> Add Item (Coming Soon)
-                </button>
             </div>
             <div class="card-body">
                 <?php if (empty($lineItems)): ?>
@@ -143,15 +138,15 @@
                                     <td><?= $item->quantity ?></td>
                                     <td><?= ucfirst(str_replace('_', ' ', $item->customization_method)) ?></td>
                                     <td>
-                                        <span class="badge bg-info"><?= ucfirst(str_replace('_', ' ', $item->supplier_status)) ?></span>
+                                        <?= $item->getSupplierStatusBadge() ?>
                                     </td>
                                     <td>
-                                        <span class="badge bg-secondary"><?= ucfirst(str_replace('_', ' ', $item->completion_status)) ?></span>
+                                        <?= $item->getCompletionStatusBadge() ?>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary" disabled>
+                                        <a href="/azteamcrm/line-items/<?= $item->id ?>/edit" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil"></i>
-                                        </button>
+                                        </a>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>

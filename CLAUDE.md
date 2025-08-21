@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AZTEAM CRM/ERP is a custom apparel and merchandise order management system for a custom apparel company specializing in personalized clothing and promotional products. The system manages orders for corporate clients, teams, and organizations with various customization methods.
 
-**Current Phase**: Phase 1 (MVP) - User authentication, user management, and order management complete. Ready for line item implementation.
+**Current Phase**: Phase 1 (MVP) - User authentication, user management, order management, and line item management complete with dual status tracking.
 
 ## Development Workflow
 
@@ -166,8 +166,24 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 - Input sanitization helpers
 - Validation framework
 
+#### Line Item Management Module
+- Full CRUD operations for line items within orders
+- Add/edit/delete individual products in orders
+- Dual status tracking system:
+  - Supplier status workflow (awaiting → order made → arrived → delivered)
+  - Completion status workflow (waiting approval → artwork approved → material prepared → completed)
+- Independent status updates for supplier and completion tracking
+- Product type selection (shirt, apron, scrub, hat, bag, etc.)
+- Size management (child sizes XS-XL, adult sizes XS-XXXXL)
+- Customization method tracking (HTV, DFT, Embroidery, Sublimation, Printing)
+- Customization areas (front, back, sleeve)
+- Color specification and special notes
+- Quantity tracking per line item
+- Progress calculation based on dual status completion
+- Dropdown status updates with visual badges
+- Cascade deletion with orders
+
 ### 🔴 Pending Implementation
-- Line Item Management (CRUD for individual products)
 - Production workflow interfaces
 - Financial reporting module
 - Advanced search and filtering
@@ -202,8 +218,16 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 '/orders/{id}/delete'         // Delete order (admin)
 '/orders/{id}/update-status'  // Update payment status
 
+// Line Item Management
+'/orders/{order_id}/line-items'       // List line items for order
+'/orders/{order_id}/line-items/create' // Add new line item
+'/orders/{order_id}/line-items/store'  // Save new line item
+'/line-items/{id}/edit'                // Edit line item
+'/line-items/{id}/update'              // Update line item
+'/line-items/{id}/delete'              // Delete line item
+'/line-items/{id}/update-status'       // Update status via AJAX
+
 // Pending Implementation
-'/orders/{order_id}/line-items'  // Line items management
 '/production'                     // Production dashboard
 '/reports'                        // Reporting module
 ```
@@ -249,6 +273,17 @@ $order->getUrgencyBadge();            // HTML badge for urgency
 $user->authenticate($username, $password);
 $user->existsExcept($field, $value, $excludeId);
 $user->setPassword($password);       // Hashes with bcrypt
+
+// LineItem model specifics:
+$lineItem->getOrder();                // Get parent order
+$lineItem->updateSupplierStatus($status);
+$lineItem->updateCompletionStatus($status);
+$lineItem->getSupplierStatusBadge();  // HTML badge for supplier status
+$lineItem->getCompletionStatusBadge(); // HTML badge for completion status
+$lineItem->getSizeLabel();            // Format size for display
+$lineItem->getCustomizationMethodLabel();
+$lineItem->getProductTypeLabel();
+$lineItem->getCustomizationAreasArray(); // Parse SET field to array
 
 // Boolean handling for MySQL:
 $model->field = $value ? 1 : 0;      // Convert to int for MySQL

@@ -20,14 +20,14 @@ return [
     '/orders/{id}/delete' => 'OrderController@delete',
     '/orders/{id}/update-status' => 'OrderController@updateStatus',
     
-    // Line Items - COMMENTED: Controller doesn't exist
-    // '/orders/{order_id}/line-items' => 'LineItemController@index',
-    // '/orders/{order_id}/line-items/create' => 'LineItemController@create',
-    // '/orders/{order_id}/line-items/store' => 'LineItemController@store',
-    // '/line-items/{id}/edit' => 'LineItemController@edit',
-    // '/line-items/{id}/update' => 'LineItemController@update',
-    // '/line-items/{id}/delete' => 'LineItemController@delete',
-    // '/line-items/{id}/update-status' => 'LineItemController@updateStatus',
+    // Line Items
+    '/orders/{order_id}/line-items' => 'LineItemController@index',
+    '/orders/{order_id}/line-items/create' => 'LineItemController@create',
+    '/orders/{order_id}/line-items/store' => 'LineItemController@store',
+    '/line-items/{id}/edit' => 'LineItemController@edit',
+    '/line-items/{id}/update' => 'LineItemController@update',
+    '/line-items/{id}/delete' => 'LineItemController@delete',
+    '/line-items/{id}/update-status' => 'LineItemController@updateStatus',
     
     // Users Management
     '/users' => 'UserController@index',

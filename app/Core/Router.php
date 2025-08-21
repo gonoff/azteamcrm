@@ -40,7 +40,7 @@ class Router
     private function convertToRegex($pattern)
     {
         $pattern = preg_replace('/\//', '\\/', $pattern);
-        $pattern = preg_replace('/\{([a-z]+)\}/', '(?P<\1>[^\/]+)', $pattern);
+        $pattern = preg_replace('/\{([a-z_]+)\}/', '(?P<\1>[^\/]+)', $pattern);
         $pattern = '/^' . $pattern . '$/i';
         return $pattern;
     }
