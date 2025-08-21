@@ -65,4 +65,4 @@ CREATE INDEX idx_line_items_status ON line_items(supplier_status, completion_sta
 
 -- Insert default admin user (password should be hashed in real implementation)
 INSERT INTO users (username, email, password_hash, role, full_name) 
-VALUES ('admin', 'admin@azteam.com', '$2y$10$example_hash_here', 'administrator', 'System Administrator');
+VALUES ('admin', 'hanieldesigner@gmail.com', '$2y$10$example_hash_here', 'administrator', 'System Administrator');
