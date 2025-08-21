@@ -184,13 +184,73 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 - Cascade deletion with orders
 
 ### 🔴 Pending Implementation
-- Production workflow interfaces
-- Financial reporting module
-- Advanced search and filtering
-- Bulk order operations
-- Export functionality (CSV/PDF)
-- Email notifications
-- Activity logging
+
+#### Production Dashboard (`/production`)
+**Purpose**: Dedicated workspace for production team to manage daily manufacturing workflow
+- **Different from Main Dashboard**: Main dashboard shows business metrics (orders, revenue, statistics), while Production Dashboard shows factory floor view (what to make today)
+- **Key Features**:
+  - View all line items across ALL orders in one place
+  - Filter by production status stages:
+    - Waiting Approval queue
+    - Artwork Approved queue  
+    - Material Prepared queue
+    - Ready for production
+  - Supplier tracking view:
+    - Items awaiting order from supplier
+    - Items with orders made
+    - Items arrived and ready
+  - Priority sorting:
+    - Rush orders at top
+    - Sort by due date
+    - Overdue items highlighted
+  - Bulk operations:
+    - Update multiple items' status at once
+    - Mark batch as completed
+  - Today's production schedule
+  - Materials needed report
+- **Target Users**: Production team members who need task-focused view rather than order-focused view
+- **Routes**: `/production`, `/production/pending`, `/production/today`
+
+#### Financial Reporting Module (`/reports`)
+- Revenue reports by date range
+- Outstanding balance reports  
+- Payment status summaries
+- Client-wise financial breakdown
+- Export to CSV/PDF
+#### Advanced Search & Filtering
+- Search orders by client name, phone, date range
+- Filter by payment status, rush orders, overdue
+- Search line items across all orders
+- Filter by product type, customization method
+- Save frequent filter combinations
+
+#### Bulk Operations
+- Update multiple line item statuses at once
+- Bulk payment status updates
+- Mass order assignment to production team
+- Batch printing of order sheets
+
+#### Export Functionality
+- Export orders to CSV/Excel
+- Generate PDF invoices
+- Export production schedules
+- Financial reports export
+- Client order history export
+
+#### Email Notifications
+- Order confirmation emails to clients
+- Rush order alerts to production team
+- Payment reminder emails
+- Order completion notifications
+- Daily production summary emails
+
+#### Activity Logging & Audit Trail
+- Track all status changes with timestamp and user
+- Order modification history
+- Payment history tracking
+- User activity logs
+- Status change reasons/notes
+- Database table needed: `order_status_history`
 
 ### Active Routes
 ```php
