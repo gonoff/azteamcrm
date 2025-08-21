@@ -17,7 +17,8 @@ class OrderController extends Controller
         
         $this->view('orders/index', [
             'orders' => $orders,
-            'title' => 'Orders'
+            'title' => 'Orders',
+            'csrf_token' => $this->csrf()
         ]);
     }
     
@@ -41,7 +42,8 @@ class OrderController extends Controller
             'order' => $orderData,
             'lineItems' => $lineItems,
             'capturedBy' => $capturedBy,
-            'title' => 'Order #' . $id
+            'title' => 'Order #' . $id,
+            'csrf_token' => $this->csrf()
         ]);
     }
     

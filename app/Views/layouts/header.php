@@ -34,12 +34,12 @@
                                 <i class="bi bi-person-circle"></i> My Profile
                             </a>
                         </li>
-                        <?php /* Commented out - Controllers/Views not implemented yet
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/orders">
                                 <i class="bi bi-cart3"></i> Orders
                             </a>
                         </li>
+                        <?php /* Commented out - Controllers/Views not implemented yet
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/production">
                                 <i class="bi bi-gear"></i> Production

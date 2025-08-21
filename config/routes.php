@@ -10,15 +10,15 @@ return [
     '/' => 'DashboardController@index',
     '/dashboard' => 'DashboardController@index',
     
-    // Orders - COMMENTED: Missing views (orders/index.php, orders/show.php, orders/form.php)
-    // '/orders' => 'OrderController@index',
-    // '/orders/create' => 'OrderController@create',
-    // '/orders/store' => 'OrderController@store',
-    // '/orders/{id}' => 'OrderController@show',
-    // '/orders/{id}/edit' => 'OrderController@edit',
-    // '/orders/{id}/update' => 'OrderController@update',
-    // '/orders/{id}/delete' => 'OrderController@delete',
-    // '/orders/{id}/update-status' => 'OrderController@updateStatus',
+    // Orders
+    '/orders' => 'OrderController@index',
+    '/orders/create' => 'OrderController@create',
+    '/orders/store' => 'OrderController@store',
+    '/orders/{id}' => 'OrderController@show',
+    '/orders/{id}/edit' => 'OrderController@edit',
+    '/orders/{id}/update' => 'OrderController@update',
+    '/orders/{id}/delete' => 'OrderController@delete',
+    '/orders/{id}/update-status' => 'OrderController@updateStatus',
     
     // Line Items - COMMENTED: Controller doesn't exist
     // '/orders/{order_id}/line-items' => 'LineItemController@index',

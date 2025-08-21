@@ -106,8 +106,7 @@
                                     <?= $order->getStatusBadge() ?>
                                 </td>
                                 <td>
-                                    <?php /* <a href="/azteamcrm/orders/<?= $order->id ?>" class="btn btn-sm btn-primary">View</a> */ ?>
-                                    <span class="text-muted">Coming Soon</span>
+                                    <a href="/azteamcrm/orders/<?= $order->id ?>" class="btn btn-sm btn-primary">View</a>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -156,11 +155,8 @@
                                 <td>$<?= number_format($order->total_value, 2) ?></td>
                                 <td><?= $order->getStatusBadge() ?></td>
                                 <td class="table-actions">
-                                    <?php /* 
                                     <a href="/azteamcrm/orders/<?= $order->id ?>" class="btn btn-sm btn-outline-primary">View</a>
                                     <a href="/azteamcrm/orders/<?= $order->id ?>/edit" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                    */ ?>
-                                    <span class="text-muted">Coming Soon</span>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -170,14 +166,9 @@
                 <?php endif; ?>
                 
                 <div class="mt-3">
-                    <?php /* 
                     <a href="/azteamcrm/orders/create" class="btn btn-success">
                         <i class="bi bi-plus-circle"></i> New Order
                     </a>
-                    */ ?>
-                    <button class="btn btn-success" disabled>
-                        <i class="bi bi-plus-circle"></i> New Order (Coming Soon)
-                    </button>
                 </div>
             </div>
         </div>

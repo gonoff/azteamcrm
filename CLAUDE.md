@@ -4,9 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AZTEAM CRM/ERP is a custom apparel and merchandise order management system built for tracking orders, production workflows, and financial transactions. The system handles personalized clothing and promotional products with various customization methods.
+AZTEAM CRM/ERP is a custom apparel and merchandise order management system for a custom apparel company specializing in personalized clothing and promotional products. The system manages orders for corporate clients, teams, and organizations with various customization methods.
 
-**Current Phase**: Phase 1 (MVP) - User authentication and management complete, ready for order management implementation.
+**Current Phase**: Phase 1 (MVP) - User authentication, user management, and order management complete. Ready for line item implementation.
+
+## Development Workflow
+
+### Our Methodology: Incremental Feature Development
+We follow a strict incremental development approach to ensure quality and stability:
+
+1. **Plan** - Analyze requirements and existing code before implementation
+2. **Implement** - Build one small feature at a time
+3. **Test** - Thoroughly test each feature before proceeding
+4. **Document** - Update documentation after successful testing
+5. **Iterate** - Move to the next feature only after current one is complete
+
+### Development Process
+```
+Plan → Implement → Test → Fix Bugs → Test Again → Update Docs → Next Feature
+```
+
+**Key Principles:**
+- Never implement multiple features simultaneously
+- Always test each feature completely before moving on
+- Update documentation immediately after successful implementation
+- Maintain backward compatibility with existing features
+- Use existing patterns and conventions in the codebase
 
 ## System Architecture
 
@@ -32,7 +55,7 @@ AZTEAM CRM/ERP is a custom apparel and merchandise order management system built
 ```
 
 ### Core Data Model
-- **Orders**: Client information, payment tracking, rush orders, financial calculations
+- **Orders**: Client info, payment tracking (unpaid/partial/paid), rush orders, financial calculations
 - **Line Items**: Individual products with dual-status tracking (supplier + completion)
 - **Users**: Role-based authentication (administrator, production_team)
 
@@ -45,30 +68,33 @@ AZTEAM CRM/ERP is a custom apparel and merchandise order management system built
 
 ### Database Setup
 ```bash
-# Import database schema (adjust credentials as needed)
+# Import database schema
 mysql -u root -p < azteam_database_schema.sql
 
 # Access MySQL via XAMPP
 /opt/lampp/bin/mysql -u root -p
 
-# Create .env file from example
+# Configure environment
 cp .env.example .env
 # Edit .env with your database credentials
 ```
 
 ### XAMPP/LAMPP Management
 ```bash
-# Start XAMPP services
+# Start services
 sudo /opt/lampp/lampp start
 
-# Stop XAMPP services
+# Stop services
 sudo /opt/lampp/lampp stop
 
-# Restart XAMPP services
+# Restart services
 sudo /opt/lampp/lampp restart
 
-# Check XAMPP status
+# Check status
 sudo /opt/lampp/lampp status
+
+# View Apache error logs
+tail -f /opt/lampp/logs/error_log
 ```
 
 ### Development Access
@@ -76,10 +102,9 @@ sudo /opt/lampp/lampp status
 # Application URL
 http://localhost/azteamcrm
 
-# Default login credentials
+# Default admin credentials
 Username: haniel
 Password: [set in database]
-# Note: Create additional users through the Users management interface
 
 # Session storage permissions (if needed)
 chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
@@ -88,55 +113,100 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 ## Current Implementation Status
 
 ### ✅ Completed Features
-- **User Authentication System**
-  - Login/logout with session management
-  - Session timeout (30 minutes of inactivity)
-  - CSRF protection on all forms
-  - Password hashing with bcrypt
-  - Role-based access control (Administrator, Production Team)
 
-- **User Management Module**
-  - Full CRUD operations for users
-  - User listing with search functionality
-  - Create/edit user forms with validation
-  - User status management (active/inactive toggle)
-  - Profile page with password change
-  - Duplicate username/email validation
-  - Prevents self-deletion and self-deactivation
+#### User Authentication System
+- Login/logout with session management
+- Session timeout (30 minutes configurable)
+- CSRF protection on all forms
+- Password hashing with bcrypt
+- Role-based access control (Administrator, Production Team)
 
-- **Dashboard**
-  - Comprehensive statistics display
-  - Recent orders listing
-  - Urgent orders tracking
-  - Financial overview (revenue, outstanding balance)
-  - Order metrics (pending, rush, overdue)
+#### User Management Module
+- Full CRUD operations for users
+- User listing with search functionality
+- Create/edit user forms with validation
+- User status management (active/inactive toggle)
+- Profile page with password change capability
+- Duplicate username/email validation
+- Self-modification protection
 
-- **Core Framework**
-  - Custom MVC architecture
-  - Database models with Active Record pattern
-  - Router with parameter extraction (fixed for PHP 8+)
-  - Session-based authentication with security features
+#### Order Management Module
+- Complete CRUD operations for orders
+- Order listing with real-time search
+- Create new orders with validation
+- Edit existing orders
+- Delete orders (admin only)
+- View detailed order information
+- Payment status management (unpaid/partial/paid)
+- Outstanding balance auto-calculation
+- Rush order detection (auto-flags orders due within 7 days)
+- Order status badges (rush, overdue, due soon)
+- Financial summary per order
+- Production progress tracking
+- Phone number auto-formatting
+- Order notes support
+- Captured by user tracking
+
+#### Dashboard
+- Comprehensive statistics display
+- Total orders, pending orders, rush orders
+- Financial metrics (revenue, outstanding balance)
+- Orders due today and overdue tracking
+- Items in production counter
+- Urgent orders section with quick actions
+- Recent orders table with inline actions
+- Direct links to order management
+
+#### Core Framework
+- Custom MVC architecture
+- Active Record pattern models
+- PHP 8+ compatible router (fixed array_values issue)
+- Session-based authentication with security features
+- CSRF protection middleware
+- Input sanitization helpers
+- Validation framework
 
 ### 🔴 Pending Implementation
-- Order CRUD views (`/app/Views/orders/`)
-- Line item management views (`/app/Views/line-items/`)
-- Controllers: LineItemController, ProductionController, ReportController
+- Line Item Management (CRUD for individual products)
 - Production workflow interfaces
-- Financial reporting functionality
+- Financial reporting module
 - Advanced search and filtering
+- Bulk order operations
+- Export functionality (CSV/PDF)
+- Email notifications
+- Activity logging
 
 ### Active Routes
-Working routes in `/config/routes.php`:
-- Authentication: `/login`, `/logout`
-- Dashboard: `/`, `/dashboard`
-- User Management: `/users`, `/users/create`, `/users/{id}/edit`, `/users/{id}/toggle-status`
-- Profile: `/profile`, `/profile/update-password`
+```php
+// Authentication
+'/login', '/logout'
 
-Commented routes (pending implementation):
-- Orders: `/orders`, `/orders/create`, `/orders/{id}/edit`
-- Line Items: `/orders/{order_id}/line-items`
-- Production: `/production`
-- Reports: `/reports`
+// Dashboard
+'/', '/dashboard'
+
+// User Management (Admin only)
+'/users', '/users/create', '/users/{id}/edit'
+'/users/{id}/update', '/users/{id}/delete'
+'/users/{id}/toggle-status'
+
+// Profile
+'/profile', '/profile/update-password'
+
+// Order Management
+'/orders'                      // List all orders
+'/orders/create'              // New order form
+'/orders/store'               // Save new order
+'/orders/{id}'                // View order details
+'/orders/{id}/edit'           // Edit order form
+'/orders/{id}/update'         // Update order
+'/orders/{id}/delete'         // Delete order (admin)
+'/orders/{id}/update-status'  // Update payment status
+
+// Pending Implementation
+'/orders/{order_id}/line-items'  // Line items management
+'/production'                     // Production dashboard
+'/reports'                        // Reporting module
+```
 
 ## Key Architectural Patterns
 
@@ -149,58 +219,200 @@ Commented routes (pending implementation):
 
 ### Authentication Pattern
 ```php
-// All protected controllers extend Controller and use:
-$this->requireAuth();        // Ensures user is logged in
-$this->requireRole('admin'); // Checks specific role
-$this->validateCSRF();       // Validates CSRF token in forms
+// Protected controllers extend Controller and use:
+$this->requireAuth();                // Ensures user is logged in
+$this->requireRole('administrator'); // Checks specific role
+$this->verifyCsrf();                // Validates CSRF token
 ```
 
 ### Model Patterns
 ```php
-// Base Model methods available:
+// Base Model methods:
 $model->find($id);                    // Find by primary key
-$model->findAll();                    // Get all records
-$model->where($field, $op, $value);   // Simple where clause (returns array)
-$model->save($data);                  // Create or update based on primary key
-$model->delete();                     // Delete current record
+$model->findAll($conditions, $orderBy, $limit);
+$model->where($field, $operator, $value);
+$model->save();                       // Create or update
+$model->delete();                     // Delete record
+$model->count($conditions);           // Count records
+$model->fill($data);                  // Mass assignment
 
-// User model specific methods:
-$user->authenticate($username, $pass); // Verify credentials
-$user->existsExcept($field, $val, $excludeId); // Check duplicates
-$user->setPassword($password);        // Hash password with bcrypt
+// Order model specifics:
+$order->getLineItems();               // Get associated line items
+$order->getCapturedByUser();          // Get user who created order
+$order->updatePaymentStatus($status, $amount);
+$order->isOverdue();                  // Check if past due date
+$order->isDueSoon();                  // Check if due within 3 days
+$order->getStatusBadge();             // HTML badge for status
+$order->getUrgencyBadge();            // HTML badge for urgency
+
+// User model specifics:
+$user->authenticate($username, $password);
+$user->existsExcept($field, $value, $excludeId);
+$user->setPassword($password);       // Hashes with bcrypt
 
 // Boolean handling for MySQL:
-$model->field = $value ? 1 : 0;       // Convert boolean to int for MySQL
+$model->field = $value ? 1 : 0;      // Convert to int for MySQL
 ```
 
-### Form Handling Pattern
+### Controller Helpers
 ```php
-// Controllers use validation helpers:
-$this->validate($data, [
-    'client_name' => 'required|string|max:255',
-    'due_date' => 'required|date|after:today'
+// Validation
+$errors = $this->validate($data, [
+    'field' => 'required|email|min:3'
 ]);
+
+// CSRF
+$token = $this->csrf();               // Generate token
+$this->verifyCsrf();                 // Verify POST request
+
+// Response helpers
+$this->json(['success' => true]);    // JSON response
+$this->redirect('/path');            // Redirect
+$this->view('folder/file', $data);   // Render view
+
+// Input sanitization
+$clean = $this->sanitize($input);
+
+// Request checks
+$this->isPost();                     // Check if POST request
+$this->isGet();                      // Check if GET request
 ```
 
 ## Business Domain Rules
 
 ### Order Management
-- Rush orders: Due date within 7 days
-- Overdue: Past due date with incomplete items
-- Outstanding balance: Total value minus payments received
-- Orders link to multiple line items
+- **Rush orders**: Automatically flagged when due date is within 7 days
+- **Overdue**: Orders past due date with payment not completed
+- **Due Soon**: Orders due within 3 days
+- **Outstanding balance**: Total value minus payments received
+- **Payment updates**: Recalculates outstanding balance automatically
+- Orders can contain multiple line items
+- Orders track the employee who captured them
 
 ### Production Workflow
 - Line items track through dual status systems independently
-- Supplier status: External vendor fulfillment tracking
-- Completion status: Internal production progress
-- Both statuses must complete for item to be done
+- **Supplier status**: External vendor fulfillment tracking
+- **Completion status**: Internal production progress
+- Both statuses must complete for item to be marked done
+- Production progress calculated as percentage of completed items
 
 ### User Roles
-- **Administrator**: Full system access, user management, financial reporting
-- **Production Team**: Update production/supplier status, view production queue
+- **Administrator**: 
+  - Full system access
+  - User management capabilities
+  - Delete orders
+  - View financial reports
+  - Access all modules
+- **Production Team**: 
+  - View and edit orders
+  - Update production status
+  - Update supplier status
+  - View production queue
+  - Cannot delete orders or manage users
 
 ### Product Types & Customization
 - **Products**: shirt, apron, scrub, hat, bag, beanie, business_card, yard_sign, car_magnet, greeting_card, door_hanger, magnet_business_card
 - **Methods**: HTV, DFT, Embroidery, Sublimation, Printing Services
 - **Areas**: Front, Back, Sleeve (multiple selections allowed)
+- **Sizes**: Child sizes (child_xs to child_xl), Adult sizes (XS-XXXXL)
+
+## Database Schema Notes
+
+### Key Tables
+- **users**: Authentication, roles, active status
+- **orders**: Client info, financial tracking, rush flag, captured_by_user_id
+- **line_items**: Products with dual-status tracking, linked to orders
+- **order_status_history**: Audit trail for status changes (future)
+
+### Important Fields
+- Boolean fields stored as TINYINT(1) (0/1)
+- Timestamps: created_at, updated_at (automatic)
+- Foreign keys enforce referential integrity
+- ENUM types for predefined status values
+- Decimal(10,2) for financial values
+
+## Common Development Tasks
+
+### Adding a New Module
+1. Create controller in `/app/Controllers/`
+2. Extend `App\Core\Controller`
+3. Add authentication in constructor
+4. Create model in `/app/Models/`
+5. Create views in `/app/Views/{module}/`
+6. Define routes in `/config/routes.php`
+7. Add navigation link in `/app/Views/layouts/header.php`
+8. Test all CRUD operations
+9. Update this documentation
+
+### Creating Views
+1. Add view file in `/app/Views/{module}/`
+2. Include header/footer from layouts
+3. Use Bootstrap 5 classes for consistent styling
+4. Add CSRF token to all forms: `<?= $csrf_token ?>`
+5. Handle session messages (success/error)
+6. Add client-side validation where appropriate
+
+### Working with Models
+1. Create model in `/app/Models/`
+2. Extend `App\Core\Model`
+3. Define `$table` and `$fillable` properties
+4. Add relationship methods (e.g., getLineItems())
+5. Add business logic methods
+6. Handle boolean conversions for MySQL
+
+## Error Handling
+
+### Common Issues & Solutions
+- **500 Error on toggle**: Convert boolean to int (0/1) for MySQL
+- **Router named argument error**: Use `array_values()` on params
+- **Session errors**: Check `/storage/` permissions (777)
+- **Database connection**: Verify `.env` settings match XAMPP config
+- **CSRF token error**: Ensure token is included in all POST forms
+- **Date validation**: Ensure date format matches MySQL (Y-m-d)
+
+### Debugging
+```php
+// Enable debug mode in .env
+APP_DEBUG=true
+
+// Check Apache logs
+tail -f /opt/lampp/logs/error_log
+
+// Check PHP errors in code
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Debug variables
+var_dump($variable);
+print_r($array);
+die(); // Stop execution
+```
+
+## Security Considerations
+- All user inputs sanitized via `Controller::sanitize()`
+- Prepared statements for all database queries
+- CSRF protection on all state-changing operations
+- Password hashing with bcrypt (cost factor 10)
+- Session regeneration on login
+- Session timeout after 30 minutes of inactivity
+- XSS protection headers in .htaccess
+- Role-based access control on sensitive operations
+- Self-modification protection (users cannot delete/deactivate themselves)
+
+## Testing Checklist for New Features
+
+Before marking a feature as complete:
+- [ ] Create functionality works with all fields
+- [ ] Read/View functionality displays all data correctly
+- [ ] Update functionality saves changes properly
+- [ ] Delete functionality works (if applicable)
+- [ ] Form validation prevents invalid data
+- [ ] CSRF protection is active on all forms
+- [ ] Error messages display correctly
+- [ ] Success messages display correctly
+- [ ] Navigation links work properly
+- [ ] Search/filter functionality works (if applicable)
+- [ ] Permission checks are enforced
+- [ ] Mobile responsive design is maintained
+- [ ] No PHP errors in Apache logs
+- [ ] Documentation is updated
