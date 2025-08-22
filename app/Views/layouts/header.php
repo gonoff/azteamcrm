@@ -6,6 +6,10 @@
     <title><?= $title ?? 'AZTEAM CRM' ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <link href="/azteamcrm/assets/css/app.css" rel="stylesheet">
 </head>
 <body>
@@ -32,6 +36,11 @@
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/profile">
                                 <i class="bi bi-person-circle"></i> My Profile
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/azteamcrm/customers">
+                                <i class="bi bi-person-badge"></i> Customers
                             </a>
                         </li>
                         <li class="nav-item">

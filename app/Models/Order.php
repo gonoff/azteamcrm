@@ -7,42 +7,58 @@ use App\Core\Model;
 class Order extends Model
 {
     protected $table = 'orders';
+    protected $primaryKey = 'order_id';
     protected $fillable = [
-        'client_name', 'client_phone', 'date_received', 'due_date',
-        'total_value', 'outstanding_balance', 'payment_status',
-        'captured_by_user_id', 'is_rush_order', 'order_notes'
+        'order_status', 'payment_status', 'customer_id', 'user_id',
+        'order_total', 'date_created', 'date_due', 'order_notes'
     ];
     
-    public function getLineItems()
+    public function getOrderItems()
     {
-        $lineItem = new LineItem();
-        return $lineItem->where('order_id', '=', $this->id);
+        $orderItem = new OrderItem();
+        return $orderItem->where('order_id', '=', $this->order_id);
     }
     
-    public function getCapturedByUser()
+    public function getUser()
     {
         $user = new User();
-        return $user->find($this->captured_by_user_id);
+        return $user->find($this->user_id);
     }
     
-    public function updatePaymentStatus($status, $paidAmount = 0)
+    public function getCustomer()
+    {
+        $customer = new Customer();
+        return $customer->find($this->customer_id);
+    }
+    
+    public function updatePaymentStatus($status)
     {
         $this->payment_status = $status;
-        
-        if ($status === 'paid') {
-            $this->outstanding_balance = 0;
-        } elseif ($status === 'partial' && $paidAmount > 0) {
-            $this->outstanding_balance = $this->total_value - $paidAmount;
-        } else {
-            $this->outstanding_balance = $this->total_value;
-        }
-        
         return $this->update();
+    }
+    
+    public function updateOrderStatus($status)
+    {
+        $this->order_status = $status;
+        return $this->update();
+    }
+    
+    public function calculateTotal()
+    {
+        $sql = "SELECT SUM(total_price) as total FROM order_items WHERE order_id = :order_id";
+        $stmt = $this->db->query($sql, ['order_id' => $this->order_id]);
+        
+        if ($stmt) {
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $this->order_total = $result['total'] ?? 0;
+            return $this->update();
+        }
+        return false;
     }
     
     public function getTotalRevenue()
     {
-        $sql = "SELECT SUM(total_value) as total FROM {$this->table}";
+        $sql = "SELECT SUM(order_total) as total FROM {$this->table}";
         $stmt = $this->db->query($sql);
         
         if ($stmt) {
@@ -54,7 +70,7 @@ class Order extends Model
     
     public function getTotalOutstanding()
     {
-        $sql = "SELECT SUM(outstanding_balance) as total FROM {$this->table} WHERE payment_status != 'paid'";
+        $sql = "SELECT SUM(order_total) as total FROM {$this->table} WHERE payment_status != 'paid'";
         $stmt = $this->db->query($sql);
         
         if ($stmt) {
@@ -66,7 +82,7 @@ class Order extends Model
     
     public function countDueToday()
     {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE due_date = CURDATE()";
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE date_due = CURDATE()";
         $stmt = $this->db->query($sql);
         
         if ($stmt) {
@@ -78,7 +94,7 @@ class Order extends Model
     
     public function countOverdue()
     {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE due_date < CURDATE() AND payment_status != 'paid'";
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE date_due < CURDATE() AND payment_status != 'paid'";
         $stmt = $this->db->query($sql);
         
         if ($stmt) {
@@ -90,10 +106,12 @@ class Order extends Model
     
     public function getUrgentOrders($limit = 10)
     {
-        $sql = "SELECT * FROM {$this->table} 
-                WHERE (is_rush_order = 1 OR due_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY))
+        $sql = "SELECT o.*, c.full_name, c.company_name 
+                FROM {$this->table} o
+                JOIN customers c ON o.customer_id = c.customer_id
+                WHERE date_due <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
                 AND payment_status != 'paid'
-                ORDER BY due_date ASC, is_rush_order DESC
+                ORDER BY date_due ASC
                 LIMIT :limit";
         
         $stmt = $this->db->getConnection()->prepare($sql);
@@ -105,14 +123,21 @@ class Order extends Model
     
     public function isOverdue()
     {
-        return strtotime($this->due_date) < strtotime('today');
+        return strtotime($this->date_due) < strtotime('today');
     }
     
     public function isDueSoon()
     {
-        $dueDate = strtotime($this->due_date);
+        $dueDate = strtotime($this->date_due);
         $threeDaysFromNow = strtotime('+3 days');
         return $dueDate <= $threeDaysFromNow && $dueDate >= strtotime('today');
+    }
+    
+    public function isRushOrder()
+    {
+        $dueDate = strtotime($this->date_due);
+        $sevenDaysFromNow = strtotime('+7 days');
+        return $dueDate <= $sevenDaysFromNow;
     }
     
     public function getStatusBadge()
@@ -128,13 +153,25 @@ class Order extends Model
     
     public function getUrgencyBadge()
     {
-        if ($this->is_rush_order) {
-            return '<span class="badge badge-danger">RUSH</span>';
-        } elseif ($this->isOverdue()) {
+        if ($this->isOverdue()) {
             return '<span class="badge badge-danger">Overdue</span>';
+        } elseif ($this->isRushOrder()) {
+            return '<span class="badge badge-danger">RUSH</span>';
         } elseif ($this->isDueSoon()) {
             return '<span class="badge badge-warning">Due Soon</span>';
         }
         return '';
+    }
+    
+    public function getOrderStatusBadge()
+    {
+        $badges = [
+            'pending' => '<span class="badge badge-warning">Pending</span>',
+            'in_production' => '<span class="badge badge-info">In Production</span>',
+            'completed' => '<span class="badge badge-success">Completed</span>',
+            'cancelled' => '<span class="badge badge-secondary">Cancelled</span>'
+        ];
+        
+        return $badges[$this->order_status] ?? '<span class="badge badge-secondary">' . ucfirst($this->order_status) . '</span>';
     }
 }

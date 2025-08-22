@@ -3,7 +3,10 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(rm:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(mysql:*)",
+      "Bash(curl:*)",
+      "Bash(/opt/lampp/bin/mysql:*)"
     ],
     "deny": [],
     "ask": []

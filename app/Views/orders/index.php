@@ -34,13 +34,13 @@
                 <thead>
                     <tr>
                         <th>Order #</th>
-                        <th>Client</th>
+                        <th>Customer</th>
                         <th>Phone</th>
-                        <th>Date Received</th>
+                        <th>Order Date</th>
                         <th>Due Date</th>
                         <th>Total</th>
-                        <th>Outstanding</th>
-                        <th>Status</th>
+                        <th>Order Status</th>
+                        <th>Payment</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -53,29 +53,36 @@
                         <?php foreach ($orders as $order): ?>
                             <tr>
                                 <td>
-                                    <strong>#<?= $order->id ?></strong>
-                                    <?php if ($order->is_rush_order): ?>
+                                    <strong>#<?= $order->order_id ?></strong>
+                                    <?php if ($order->isRushOrder()): ?>
                                         <span class="badge bg-danger ms-1">RUSH</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><?= htmlspecialchars($order->client_name) ?></td>
-                                <td><?= htmlspecialchars($order->client_phone) ?></td>
-                                <td><?= date('M d, Y', strtotime($order->date_received)) ?></td>
                                 <td>
-                                    <?= date('M d, Y', strtotime($order->due_date)) ?>
+                                    <?php if ($order->customer): ?>
+                                        <a href="/azteamcrm/customers/<?= $order->customer->customer_id ?>" class="text-decoration-none">
+                                            <?= htmlspecialchars($order->customer->full_name) ?>
+                                            <?php if ($order->customer->company_name): ?>
+                                                <br><small class="text-muted"><?= htmlspecialchars($order->customer->company_name) ?></small>
+                                            <?php endif; ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted">N/A</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= $order->customer ? $order->customer->formatPhoneNumber() : 'N/A' ?></td>
+                                <td><?= date('M d, Y', strtotime($order->date_created)) ?></td>
+                                <td>
+                                    <?= date('M d, Y', strtotime($order->date_due)) ?>
                                     <?php if ($order->isOverdue() && $order->payment_status !== 'paid'): ?>
                                         <span class="badge bg-danger ms-1">Overdue</span>
                                     <?php elseif ($order->isDueSoon() && $order->payment_status !== 'paid'): ?>
                                         <span class="badge bg-warning ms-1">Due Soon</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>$<?= number_format($order->total_value, 2) ?></td>
+                                <td>$<?= number_format($order->order_total, 2) ?></td>
                                 <td>
-                                    <?php if ($order->outstanding_balance > 0): ?>
-                                        <span class="text-danger">$<?= number_format($order->outstanding_balance, 2) ?></span>
-                                    <?php else: ?>
-                                        <span class="text-success">$0.00</span>
-                                    <?php endif; ?>
+                                    <?= $order->getOrderStatusBadge() ?>
                                 </td>
                                 <td>
                                     <?php if ($order->payment_status === 'paid'): ?>
@@ -88,12 +95,12 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm" role="group">
-                                        <a href="/azteamcrm/orders/<?= $order->id ?>" 
+                                        <a href="/azteamcrm/orders/<?= $order->order_id ?>" 
                                            class="btn btn-outline-primary" 
                                            title="View">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a href="/azteamcrm/orders/<?= $order->id ?>/edit" 
+                                        <a href="/azteamcrm/orders/<?= $order->order_id ?>/edit" 
                                            class="btn btn-outline-secondary" 
                                            title="Edit">
                                             <i class="bi bi-pencil"></i>
@@ -102,8 +109,8 @@
                                         <?php if ($_SESSION['user_role'] === 'administrator'): ?>
                                             <button type="button" 
                                                     class="btn btn-outline-danger delete-order-btn" 
-                                                    data-order-id="<?= $order->id ?>"
-                                                    data-client="<?= htmlspecialchars($order->client_name) ?>"
+                                                    data-order-id="<?= $order->order_id ?>"
+                                                    data-client="<?= htmlspecialchars($order->customer ? $order->customer->full_name : 'Unknown') ?>"
                                                     title="Delete">
                                                 <i class="bi bi-trash"></i>
                                             </button>

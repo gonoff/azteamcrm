@@ -24,104 +24,103 @@
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
                 
-                <form method="POST" action="<?= $order ? "/azteamcrm/orders/{$order->id}/update" : "/azteamcrm/orders/store" ?>" class="needs-validation" novalidate>
+                <form method="POST" action="<?= $order ? "/azteamcrm/orders/{$order->order_id}/update" : "/azteamcrm/orders/store" ?>" class="needs-validation" novalidate>
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="client_name" class="form-label">Client Name <span class="text-danger">*</span></label>
-                            <input type="text" 
-                                   class="form-control <?= isset($errors['client_name']) ? 'is-invalid' : '' ?>" 
-                                   id="client_name" 
-                                   name="client_name" 
-                                   value="<?= htmlspecialchars($_SESSION['old_input']['client_name'] ?? $order->client_name ?? '') ?>" 
-                                   required>
-                            <?php if (isset($errors['client_name'])): ?>
-                                <div class="invalid-feedback"><?= htmlspecialchars($errors['client_name']) ?></div>
+                        <div class="col-md-8 mb-3">
+                            <label for="customer_id" class="form-label">Customer <span class="text-danger">*</span></label>
+                            <select class="form-select <?= isset($errors['customer_id']) ? 'is-invalid' : '' ?>" 
+                                    id="customer_id" 
+                                    name="customer_id" 
+                                    required>
+                                <option value="">Select a customer...</option>
+                                <?php foreach ($customers as $customer): ?>
+                                    <option value="<?= $customer->customer_id ?>" 
+                                            <?= ($_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '') == $customer->customer_id ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($customer->full_name) ?>
+                                        <?php if ($customer->company_name): ?>
+                                            (<?= htmlspecialchars($customer->company_name) ?>)
+                                        <?php endif; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (isset($errors['customer_id'])): ?>
+                                <div class="invalid-feedback"><?= htmlspecialchars($errors['customer_id']) ?></div>
                             <?php endif; ?>
-                            <small class="text-muted">Minimum 3 characters</small>
                         </div>
                         
-                        <div class="col-md-6 mb-3">
-                            <label for="client_phone" class="form-label">Client Phone <span class="text-danger">*</span></label>
-                            <input type="tel" 
-                                   class="form-control <?= isset($errors['client_phone']) ? 'is-invalid' : '' ?>" 
-                                   id="client_phone" 
-                                   name="client_phone" 
-                                   value="<?= htmlspecialchars($_SESSION['old_input']['client_phone'] ?? $order->client_phone ?? '') ?>" 
-                                   placeholder="(555) 123-4567"
-                                   required>
-                            <?php if (isset($errors['client_phone'])): ?>
-                                <div class="invalid-feedback"><?= htmlspecialchars($errors['client_phone']) ?></div>
-                            <?php endif; ?>
+                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <a href="/azteamcrm/customers/create" class="btn btn-outline-primary">
+                                <i class="bi bi-plus-circle"></i> New Customer
+                            </a>
                         </div>
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="date_received" class="form-label">Date Received <span class="text-danger">*</span></label>
+                        <div class="col-md-4 mb-3">
+                            <label for="date_due" class="form-label">Due Date <span class="text-danger">*</span></label>
                             <input type="date" 
-                                   class="form-control <?= isset($errors['date_received']) ? 'is-invalid' : '' ?>" 
-                                   id="date_received" 
-                                   name="date_received" 
-                                   value="<?= $_SESSION['old_input']['date_received'] ?? $order->date_received ?? date('Y-m-d') ?>" 
-                                   required>
-                            <?php if (isset($errors['date_received'])): ?>
-                                <div class="invalid-feedback"><?= htmlspecialchars($errors['date_received']) ?></div>
-                            <?php endif; ?>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="due_date" class="form-label">Due Date <span class="text-danger">*</span></label>
-                            <input type="date" 
-                                   class="form-control <?= isset($errors['due_date']) ? 'is-invalid' : '' ?>" 
-                                   id="due_date" 
-                                   name="due_date" 
-                                   value="<?= $_SESSION['old_input']['due_date'] ?? $order->due_date ?? '' ?>" 
+                                   class="form-control <?= isset($errors['date_due']) ? 'is-invalid' : '' ?>" 
+                                   id="date_due" 
+                                   name="date_due" 
+                                   value="<?= $_SESSION['old_input']['date_due'] ?? $order->date_due ?? '' ?>" 
                                    min="<?= date('Y-m-d') ?>"
                                    required>
-                            <?php if (isset($errors['due_date'])): ?>
-                                <div class="invalid-feedback"><?= htmlspecialchars($errors['due_date']) ?></div>
+                            <?php if (isset($errors['date_due'])): ?>
+                                <div class="invalid-feedback"><?= htmlspecialchars($errors['date_due']) ?></div>
                             <?php endif; ?>
                             <small class="text-muted">Must be today or later</small>
                         </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="order_status" class="form-label">Order Status</label>
+                            <select class="form-select" id="order_status" name="order_status">
+                                <?php $selectedStatus = $_SESSION['old_input']['order_status'] ?? $order->order_status ?? 'pending'; ?>
+                                <option value="pending" <?= $selectedStatus === 'pending' ? 'selected' : '' ?>>Pending</option>
+                                <option value="in_production" <?= $selectedStatus === 'in_production' ? 'selected' : '' ?>>In Production</option>
+                                <option value="completed" <?= $selectedStatus === 'completed' ? 'selected' : '' ?>>Completed</option>
+                                <option value="cancelled" <?= $selectedStatus === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="payment_status" class="form-label">Payment Status</label>
+                            <select class="form-select" id="payment_status" name="payment_status">
+                                <?php $selectedPayment = $_SESSION['old_input']['payment_status'] ?? $order->payment_status ?? 'unpaid'; ?>
+                                <option value="unpaid" <?= $selectedPayment === 'unpaid' ? 'selected' : '' ?>>Unpaid</option>
+                                <option value="partial" <?= $selectedPayment === 'partial' ? 'selected' : '' ?>>Partial</option>
+                                <option value="paid" <?= $selectedPayment === 'paid' ? 'selected' : '' ?>>Paid</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="total_value" class="form-label">Total Value <span class="text-danger">*</span></label>
+                            <label for="order_total" class="form-label">Order Total <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="number" 
-                                       class="form-control <?= isset($errors['total_value']) ? 'is-invalid' : '' ?>" 
-                                       id="total_value" 
-                                       name="total_value" 
-                                       value="<?= $_SESSION['old_input']['total_value'] ?? $order->total_value ?? '' ?>" 
+                                       class="form-control <?= isset($errors['order_total']) ? 'is-invalid' : '' ?>" 
+                                       id="order_total" 
+                                       name="order_total" 
+                                       value="<?= $_SESSION['old_input']['order_total'] ?? $order->order_total ?? '' ?>" 
                                        step="0.01"
                                        min="0"
                                        placeholder="0.00"
                                        required>
-                                <?php if (isset($errors['total_value'])): ?>
-                                    <div class="invalid-feedback"><?= htmlspecialchars($errors['total_value']) ?></div>
+                                <?php if (isset($errors['order_total'])): ?>
+                                    <div class="invalid-feedback"><?= htmlspecialchars($errors['order_total']) ?></div>
                                 <?php endif; ?>
                             </div>
                             <small class="text-muted">Enter the total amount to charge</small>
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Order Type</label>
-                            <div class="form-check">
-                                <input class="form-check-input" 
-                                       type="checkbox" 
-                                       id="is_rush_order" 
-                                       name="is_rush_order"
-                                       value="1"
-                                       <?= ($_SESSION['old_input']['is_rush_order'] ?? $order->is_rush_order ?? false) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="is_rush_order">
-                                    <span class="badge bg-danger">RUSH ORDER</span> - Mark this order as rush
-                                </label>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> <strong>Note:</strong><br>
+                                Orders are automatically marked as <span class="badge bg-danger">RUSH</span> when due within 7 days.
                             </div>
-                            <small class="text-muted">Rush orders have priority in production</small>
                         </div>
                     </div>
                     
@@ -138,8 +137,8 @@
                     <?php if ($order): ?>
                         <div class="alert alert-info">
                             <strong>Order Information:</strong><br>
-                            Created: <?= date('F d, Y g:i A', strtotime($order->created_at)) ?><br>
-                            Last Updated: <?= date('F d, Y g:i A', strtotime($order->updated_at)) ?><br>
+                            Created: <?= date('F d, Y g:i A', strtotime($order->date_created)) ?><br>
+                            Order ID: #<?= $order->order_id ?><br>
                             Outstanding Balance: $<?= number_format($order->outstanding_balance, 2) ?><br>
                             Payment Status: 
                             <?php if ($order->payment_status === 'paid'): ?>

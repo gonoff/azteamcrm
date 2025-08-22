@@ -1,12 +1,12 @@
 <?php include dirname(__DIR__) . '/layouts/header.php'; ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h2">Order #<?= $order->id ?></h1>
+    <h1 class="h2">Order #<?= $order->order_id ?></h1>
     <div>
         <a href="/azteamcrm/orders" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to Orders
         </a>
-        <a href="/azteamcrm/orders/<?= $order->id ?>/edit" class="btn btn-primary">
+        <a href="/azteamcrm/orders/<?= $order->order_id ?>/edit" class="btn btn-primary">
             <i class="bi bi-pencil"></i> Edit Order
         </a>
         <?php if ($_SESSION['user_role'] === 'administrator'): ?>
@@ -43,23 +43,32 @@
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <strong>Client Name:</strong><br>
-                        <?= htmlspecialchars($order->client_name) ?>
+                        <strong>Customer:</strong><br>
+                        <?php if ($customer): ?>
+                            <a href="/azteamcrm/customers/<?= $customer->customer_id ?>" class="text-decoration-none">
+                                <?= htmlspecialchars($customer->full_name) ?>
+                                <?php if ($customer->company_name): ?>
+                                    <br><small class="text-muted"><?= htmlspecialchars($customer->company_name) ?></small>
+                                <?php endif; ?>
+                            </a>
+                        <?php else: ?>
+                            <span class="text-muted">Customer not found</span>
+                        <?php endif; ?>
                     </div>
                     <div class="col-md-6">
-                        <strong>Client Phone:</strong><br>
-                        <?= htmlspecialchars($order->client_phone) ?>
+                        <strong>Phone:</strong><br>
+                        <?= $customer ? $customer->formatPhoneNumber() : 'N/A' ?>
                     </div>
                 </div>
                 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <strong>Date Received:</strong><br>
-                        <?= date('F d, Y', strtotime($order->date_received)) ?>
+                        <strong>Order Created:</strong><br>
+                        <?= date('F d, Y', strtotime($order->date_created)) ?>
                     </div>
                     <div class="col-md-6">
                         <strong>Due Date:</strong><br>
-                        <?= date('F d, Y', strtotime($order->due_date)) ?>
+                        <?= date('F d, Y', strtotime($order->date_due)) ?>
                         <?php if ($order->isOverdue() && $order->payment_status !== 'paid'): ?>
                             <span class="badge bg-danger ms-2">Overdue</span>
                         <?php elseif ($order->isDueSoon() && $order->payment_status !== 'paid'): ?>
@@ -70,16 +79,15 @@
                 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <strong>Order Type:</strong><br>
-                        <?php if ($order->is_rush_order): ?>
-                            <span class="badge bg-danger">RUSH ORDER</span>
-                        <?php else: ?>
-                            <span class="badge bg-secondary">Standard</span>
+                        <strong>Order Status:</strong><br>
+                        <?= $order->getOrderStatusBadge() ?>
+                        <?php if ($order->isRushOrder()): ?>
+                            <span class="badge bg-danger ms-1">RUSH</span>
                         <?php endif; ?>
                     </div>
                     <div class="col-md-6">
                         <strong>Captured By:</strong><br>
-                        <?= htmlspecialchars($capturedBy ? $capturedBy->full_name : 'Unknown') ?>
+                        <?= htmlspecialchars($user ? $user->full_name : 'Unknown') ?>
                     </div>
                 </div>
                 
@@ -97,25 +105,30 @@
                 <div class="row">
                     <div class="col-12">
                         <small class="text-muted">
-                            Created: <?= date('F d, Y g:i A', strtotime($order->created_at)) ?> | 
-                            Last Updated: <?= date('F d, Y g:i A', strtotime($order->updated_at)) ?>
+                            Order ID: #<?= $order->order_id ?> | 
+                            Created: <?= date('F d, Y g:i A', strtotime($order->date_created)) ?>
                         </small>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Line Items Card -->
+        <!-- Order Items Card -->
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Line Items</h5>
-                <a href="/azteamcrm/orders/<?= $order->id ?>/line-items/create" class="btn btn-sm btn-success">
-                    <i class="bi bi-plus"></i> Add Item
-                </a>
+                <h5 class="mb-0">Order Items</h5>
+                <div>
+                    <a href="/azteamcrm/orders/<?= $order->order_id ?>/order-items" class="btn btn-sm btn-info">
+                        <i class="bi bi-list"></i> View All
+                    </a>
+                    <a href="/azteamcrm/orders/<?= $order->order_id ?>/order-items/create" class="btn btn-sm btn-success">
+                        <i class="bi bi-plus"></i> Add Item
+                    </a>
+                </div>
             </div>
             <div class="card-body">
-                <?php if (empty($lineItems)): ?>
-                    <p class="text-muted text-center">No line items added yet.</p>
+                <?php if (empty($orderItems)): ?>
+                    <p class="text-muted text-center">No order items added yet.</p>
                 <?php else: ?>
                     <div class="table-responsive">
                         <table class="table table-sm">
@@ -126,25 +139,25 @@
                                     <th>Quantity</th>
                                     <th>Method</th>
                                     <th>Supplier Status</th>
-                                    <th>Completion Status</th>
+                                    <th>Item Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($lineItems as $item): ?>
+                                <?php foreach ($orderItems as $item): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($item->product_description) ?></td>
-                                    <td><?= strtoupper(str_replace('_', ' ', $item->size)) ?></td>
+                                    <td><?= $item->getSizeLabel() ?></td>
                                     <td><?= $item->quantity ?></td>
-                                    <td><?= ucfirst(str_replace('_', ' ', $item->customization_method)) ?></td>
+                                    <td><?= $item->getCustomMethodLabel() ?></td>
                                     <td>
                                         <?= $item->getSupplierStatusBadge() ?>
                                     </td>
                                     <td>
-                                        <?= $item->getCompletionStatusBadge() ?>
+                                        <?= $item->getStatusBadge() ?>
                                     </td>
                                     <td>
-                                        <a href="/azteamcrm/line-items/<?= $item->id ?>/edit" class="btn btn-sm btn-outline-primary">
+                                        <a href="/azteamcrm/order-items/<?= $item->order_item_id ?>/edit" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                     </td>
@@ -167,15 +180,10 @@
             <div class="card-body">
                 <div class="mb-3">
                     <strong>Total Value:</strong>
-                    <h3 class="text-primary">$<?= number_format($order->total_value, 2) ?></h3>
+                    <h3 class="text-primary">$<?= number_format($order->order_total, 2) ?></h3>
                 </div>
                 
-                <div class="mb-3">
-                    <strong>Outstanding Balance:</strong>
-                    <h4 class="<?= $order->outstanding_balance > 0 ? 'text-danger' : 'text-success' ?>">
-                        $<?= number_format($order->outstanding_balance, 2) ?>
-                    </h4>
-                </div>
+                <!-- Outstanding balance removed in new schema -->
                 
                 <div class="mb-3">
                     <strong>Payment Status:</strong><br>
@@ -191,7 +199,7 @@
                 <hr>
                 
                 <!-- Update Payment Form -->
-                <form method="POST" action="/azteamcrm/orders/<?= $order->id ?>/update-status">
+                <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/update-status">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     
                     <div class="mb-3">
@@ -214,8 +222,8 @@
                                    name="paid_amount" 
                                    step="0.01"
                                    min="0"
-                                   max="<?= $order->total_value ?>"
-                                   value="<?= $order->total_value - $order->outstanding_balance ?>">
+                                   max="<?= $order->order_total ?>"
+                                   value="0">
                         </div>
                     </div>
                     
@@ -233,11 +241,10 @@
             </div>
             <div class="card-body">
                 <?php 
-                $totalItems = count($lineItems);
+                $totalItems = count($orderItems);
                 $completedItems = 0;
-                foreach ($lineItems as $item) {
-                    if ($item->supplier_status === 'order_delivered' && 
-                        $item->completion_status === 'work_completed') {
+                foreach ($orderItems as $item) {
+                    if ($item->order_item_status === 'completed') {
                         $completedItems++;
                     }
                 }
@@ -279,12 +286,12 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete this order for <strong><?= htmlspecialchars($order->client_name) ?></strong>?</p>
-                <p class="text-danger">This action cannot be undone and will also delete all associated line items.</p>
+                <p>Are you sure you want to delete this order for <strong><?= htmlspecialchars($customer ? $customer->full_name : 'Unknown Customer') ?></strong>?</p>
+                <p class="text-danger">This action cannot be undone and will also delete all associated order items.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="POST" action="/azteamcrm/orders/<?= $order->id ?>/delete" style="display: inline;">
+                <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/delete" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <button type="submit" class="btn btn-danger">Delete Order</button>
                 </form>

@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Models\Order;
+use App\Models\Customer;
 use App\Models\User;
 
 class OrderController extends Controller
@@ -13,7 +14,12 @@ class OrderController extends Controller
         $this->requireAuth();
         
         $order = new Order();
-        $orders = $order->findAll([], 'created_at DESC');
+        $orders = $order->findAll([], 'date_created DESC');
+        
+        // Load customer data for each order
+        foreach ($orders as $ord) {
+            $ord->customer = $ord->getCustomer();
+        }
         
         $this->view('orders/index', [
             'orders' => $orders,
@@ -35,14 +41,16 @@ class OrderController extends Controller
             return;
         }
         
-        $lineItems = $orderData->getLineItems();
-        $capturedBy = $orderData->getCapturedByUser();
+        $orderItems = $orderData->getOrderItems();
+        $customer = $orderData->getCustomer();
+        $user = $orderData->getUser();
         
         $this->view('orders/show', [
             'order' => $orderData,
-            'lineItems' => $lineItems,
-            'capturedBy' => $capturedBy,
-            'title' => 'Order #' . $id,
+            'orderItems' => $orderItems,
+            'customer' => $customer,
+            'user' => $user,
+            'title' => 'Order #' . $orderData->order_id,
             'csrf_token' => $this->csrf()
         ]);
     }
@@ -51,10 +59,14 @@ class OrderController extends Controller
     {
         $this->requireAuth();
         
+        $customer = new Customer();
+        $customers = $customer->findAll(['customer_status' => 'active'], 'full_name ASC');
+        
         $this->view('orders/form', [
             'title' => 'Create Order',
             'csrf_token' => $this->csrf(),
-            'order' => null
+            'order' => null,
+            'customers' => $customers
         ]);
     }
     
@@ -63,7 +75,7 @@ class OrderController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
-            $this->redirect('/orders');
+            $this->redirect('/azteamcrm/orders');
         }
         
         $this->verifyCsrf();
@@ -71,33 +83,31 @@ class OrderController extends Controller
         $data = $this->sanitize($_POST);
         
         $errors = $this->validate($data, [
-            'client_name' => 'required|min:3',
-            'client_phone' => 'required',
-            'date_received' => 'required',
-            'due_date' => 'required',
-            'total_value' => 'required'
+            'customer_id' => 'required',
+            'date_due' => 'required',
+            'order_total' => 'required'
         ]);
         
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
-            $this->redirect('/orders/create');
+            $this->redirect('/azteamcrm/orders/create');
         }
         
-        $data['captured_by_user_id'] = $_SESSION['user_id'];
-        $data['is_rush_order'] = isset($data['is_rush_order']) ? 1 : 0;
-        $data['outstanding_balance'] = $data['total_value'];
-        $data['payment_status'] = 'unpaid';
+        $data['user_id'] = $_SESSION['user_id'];
+        $data['order_status'] = $data['order_status'] ?? 'pending';
+        $data['payment_status'] = $data['payment_status'] ?? 'unpaid';
+        $data['date_created'] = date('Y-m-d H:i:s');
         
         $order = new Order();
         $newOrder = $order->create($data);
         
         if ($newOrder) {
             $_SESSION['success'] = 'Order created successfully!';
-            $this->redirect('/orders/' . $newOrder->id);
+            $this->redirect('/azteamcrm/orders/' . $newOrder->order_id);
         } else {
             $_SESSION['error'] = 'Failed to create order.';
-            $this->redirect('/orders/create');
+            $this->redirect('/azteamcrm/orders/create');
         }
     }
     
@@ -114,10 +124,14 @@ class OrderController extends Controller
             return;
         }
         
+        $customer = new Customer();
+        $customers = $customer->findAll(['customer_status' => 'active'], 'full_name ASC');
+        
         $this->view('orders/form', [
-            'title' => 'Edit Order #' . $id,
+            'title' => 'Edit Order #' . $orderData->order_id,
             'csrf_token' => $this->csrf(),
-            'order' => $orderData
+            'order' => $orderData,
+            'customers' => $customers
         ]);
     }
     
@@ -126,7 +140,7 @@ class OrderController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
-            $this->redirect('/orders');
+            $this->redirect('/azteamcrm/orders');
         }
         
         $this->verifyCsrf();
@@ -135,50 +149,39 @@ class OrderController extends Controller
         $orderData = $order->find($id);
         
         if (!$orderData) {
-            $this->redirect('/orders');
+            $this->redirect('/azteamcrm/orders');
         }
         
         $data = $this->sanitize($_POST);
         
         $errors = $this->validate($data, [
-            'client_name' => 'required|min:3',
-            'client_phone' => 'required',
-            'date_received' => 'required',
-            'due_date' => 'required',
-            'total_value' => 'required'
+            'customer_id' => 'required',
+            'date_due' => 'required',
+            'order_total' => 'required'
         ]);
         
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
-            $this->redirect('/orders/' . $id . '/edit');
+            $this->redirect('/azteamcrm/orders/' . $id . '/edit');
         }
         
-        $data['is_rush_order'] = isset($data['is_rush_order']) ? 1 : 0;
-        
-        // Update outstanding balance if total value changed
-        if ($data['total_value'] != $orderData->total_value) {
-            $paidAmount = $orderData->total_value - $orderData->outstanding_balance;
-            $data['outstanding_balance'] = $data['total_value'] - $paidAmount;
-            
-            if ($data['outstanding_balance'] <= 0) {
-                $data['payment_status'] = 'paid';
-                $data['outstanding_balance'] = 0;
-            } elseif ($data['outstanding_balance'] < $data['total_value']) {
-                $data['payment_status'] = 'partial';
-            } else {
-                $data['payment_status'] = 'unpaid';
-            }
+        // Keep existing order status and payment status if not changed
+        if (!isset($data['order_status'])) {
+            $data['order_status'] = $orderData->order_status;
+        }
+        if (!isset($data['payment_status'])) {
+            $data['payment_status'] = $orderData->payment_status;
         }
         
         $orderData->fill($data);
         
         if ($orderData->update()) {
             $_SESSION['success'] = 'Order updated successfully!';
-            $this->redirect('/orders/' . $id);
+            $this->redirect('/azteamcrm/orders/' . $id);
         } else {
             $_SESSION['error'] = 'Failed to update order.';
-            $this->redirect('/orders/' . $id . '/edit');
+            $this->redirect('/azteamcrm/orders/' . $id . '/edit');
         }
     }
     
@@ -196,7 +199,7 @@ class OrderController extends Controller
             $_SESSION['error'] = 'Failed to delete order.';
         }
         
-        $this->redirect('/orders');
+        $this->redirect('/azteamcrm/orders');
     }
     
     public function updateStatus($id)
@@ -204,7 +207,7 @@ class OrderController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
-            $this->redirect('/orders/' . $id);
+            $this->redirect('/azteamcrm/orders/' . $id);
         }
         
         $this->verifyCsrf();
@@ -213,18 +216,18 @@ class OrderController extends Controller
         $orderData = $order->find($id);
         
         if (!$orderData) {
-            $this->redirect('/orders');
+            $this->redirect('/azteamcrm/orders');
         }
         
         $status = $this->sanitize($_POST['payment_status'] ?? '');
         $paidAmount = floatval($_POST['paid_amount'] ?? 0);
         
-        if ($orderData->updatePaymentStatus($status, $paidAmount)) {
+        if ($orderData->updatePaymentStatus($status)) {
             $_SESSION['success'] = 'Payment status updated successfully!';
         } else {
             $_SESSION['error'] = 'Failed to update payment status.';
         }
         
-        $this->redirect('/orders/' . $id);
+        $this->redirect('/azteamcrm/orders/' . $id);
     }
 }

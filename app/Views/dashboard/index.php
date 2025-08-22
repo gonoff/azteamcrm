@@ -97,16 +97,16 @@
                         <tbody>
                             <?php foreach ($urgentOrders as $order): ?>
                             <tr>
-                                <td>#<?= $order->id ?></td>
-                                <td><?= htmlspecialchars($order->client_name) ?></td>
-                                <td><?= date('M d, Y', strtotime($order->due_date)) ?></td>
-                                <td>$<?= number_format($order->total_value, 2) ?></td>
+                                <td>#<?= $order->order_id ?></td>
+                                <td><?= htmlspecialchars($order->full_name ?? $order->company_name ?? 'N/A') ?></td>
+                                <td><?= date('M d, Y', strtotime($order->date_due)) ?></td>
+                                <td>$<?= number_format($order->order_total, 2) ?></td>
                                 <td>
                                     <?= $order->getUrgencyBadge() ?>
                                     <?= $order->getStatusBadge() ?>
                                 </td>
                                 <td>
-                                    <a href="/azteamcrm/orders/<?= $order->id ?>" class="btn btn-sm btn-primary">View</a>
+                                    <a href="/azteamcrm/orders/<?= $order->order_id ?>" class="btn btn-sm btn-primary">View</a>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -147,16 +147,16 @@
                         <tbody>
                             <?php foreach ($recentOrders as $order): ?>
                             <tr>
-                                <td>#<?= $order->id ?></td>
-                                <td><?= htmlspecialchars($order->client_name) ?></td>
-                                <td><?= htmlspecialchars($order->client_phone) ?></td>
-                                <td><?= date('M d', strtotime($order->date_received)) ?></td>
-                                <td><?= date('M d', strtotime($order->due_date)) ?></td>
-                                <td>$<?= number_format($order->total_value, 2) ?></td>
+                                <td>#<?= $order->order_id ?></td>
+                                <td><?= htmlspecialchars($order->customer ? $order->customer->full_name : 'N/A') ?></td>
+                                <td><?= $order->customer ? $order->customer->formatPhoneNumber() : 'N/A' ?></td>
+                                <td><?= date('M d', strtotime($order->date_created)) ?></td>
+                                <td><?= date('M d', strtotime($order->date_due)) ?></td>
+                                <td>$<?= number_format($order->order_total, 2) ?></td>
                                 <td><?= $order->getStatusBadge() ?></td>
                                 <td class="table-actions">
-                                    <a href="/azteamcrm/orders/<?= $order->id ?>" class="btn btn-sm btn-outline-primary">View</a>
-                                    <a href="/azteamcrm/orders/<?= $order->id ?>/edit" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                    <a href="/azteamcrm/orders/<?= $order->order_id ?>" class="btn btn-sm btn-outline-primary">View</a>
+                                    <a href="/azteamcrm/orders/<?= $order->order_id ?>/edit" class="btn btn-sm btn-outline-secondary">Edit</a>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

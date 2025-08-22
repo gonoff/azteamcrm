@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AZTEAM CRM/ERP is a custom apparel and merchandise order management system for a custom apparel company specializing in personalized clothing and promotional products. The system manages orders for corporate clients, teams, and organizations with various customization methods.
 
-**Current Phase**: Phase 1 (MVP) - User authentication, user management, order management, and line item management complete with dual status tracking.
+**Current Database**: `azteamerp` (migrated from `azteamcrm`)
+
+**Current Phase**: Phase 2 - Successfully migrated to new database schema with separate customer management, improved order items with pricing, and simplified status tracking.
 
 ## Development Workflow
 
@@ -55,21 +57,23 @@ Plan → Implement → Test → Fix Bugs → Test Again → Update Docs → Next
 ```
 
 ### Core Data Model
-- **Orders**: Client info, payment tracking (unpaid/partial/paid), rush orders, financial calculations
-- **Line Items**: Individual products with dual-status tracking (supplier + completion)
+- **Customers**: Separate entity for customer management with addresses and contact info
+- **Orders**: Links to customers via foreign key, payment tracking (unpaid/partial/paid), rush orders
+- **Order Items**: Individual products with single-status tracking and pricing (unit_price, total_price)
 - **Users**: Role-based authentication (administrator, production_team)
 
 ### Status Workflows
-1. **Supplier Status**: awaiting_to_order → order_made → order_arrived → order_delivered
-2. **Completion Status**: waiting_approval → artwork_approved → material_prepared → work_completed
-3. **Payment Status**: unpaid → partial → paid
+1. **Order Status**: pending → processing → completed (or cancelled/on_hold)
+2. **Order Item Status**: pending → in_production → completed
+3. **Supplier Status**: awaiting_order → order_made → order_arrived → order_delivered
+4. **Payment Status**: unpaid → partial → paid
 
 ## Development Commands
 
 ### Database Setup
 ```bash
 # Import database schema
-mysql -u root -p < azteam_database_schema.sql
+mysql -u root -p azteamerp < azteamerp.sql
 
 # Access MySQL via XAMPP
 /opt/lampp/bin/mysql -u root -p
@@ -95,6 +99,9 @@ sudo /opt/lampp/lampp status
 
 # View Apache error logs
 tail -f /opt/lampp/logs/error_log
+
+# View PHP error logs
+tail -f /opt/lampp/logs/php_error_log
 ```
 
 ### Development Access
@@ -106,7 +113,7 @@ http://localhost/azteamcrm
 Username: haniel
 Password: [set in database]
 
-# Session storage permissions (if needed)
+# Fix session storage permissions if needed
 chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 ```
 
@@ -133,18 +140,18 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 #### Order Management Module
 - Complete CRUD operations for orders
 - Order listing with real-time search
-- Create new orders with validation
+- Create new orders with customer selection (not inline client data)
 - Edit existing orders
 - Delete orders (admin only)
-- View detailed order information
+- View detailed order information with customer links
 - Payment status management (unpaid/partial/paid)
-- Outstanding balance auto-calculation
+- Order status management (pending/processing/completed/cancelled/on_hold)
 - Rush order detection (auto-flags orders due within 7 days)
 - Order status badges (rush, overdue, due soon)
 - Financial summary per order
 - Production progress tracking
-- Phone number auto-formatting
 - Order notes support
+- Links to customer records
 - Captured by user tracking
 
 #### Dashboard
@@ -166,21 +173,30 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 - Input sanitization helpers
 - Validation framework
 
-#### Line Item Management Module
-- Full CRUD operations for line items within orders
+#### Customer Management Module
+- Full CRUD operations for customers
+- Customer listing with search functionality
+- Customer details view with order history
+- Company name support (optional)
+- Full address management (line 1, line 2, city, state, zip)
+- Phone number formatting
+- Customer status (active/inactive)
+- Revenue and order statistics per customer
+- Relationship with orders via foreign key
+
+#### Order Item Management Module (formerly Line Items)
+- Full CRUD operations for order items within orders
 - Add/edit/delete individual products in orders
-- Dual status tracking system:
-  - Supplier status workflow (awaiting → order made → arrived → delivered)
-  - Completion status workflow (waiting approval → artwork approved → material prepared → completed)
-- Independent status updates for supplier and completion tracking
+- Single status tracking (pending → in_production → completed)
+- Pricing at item level (unit_price, auto-calculated total_price)
 - Product type selection (shirt, apron, scrub, hat, bag, etc.)
-- Size management (child sizes XS-XL, adult sizes XS-XXXXL)
-- Customization method tracking (HTV, DFT, Embroidery, Sublimation, Printing)
-- Customization areas (front, back, sleeve)
-- Color specification and special notes
-- Quantity tracking per line item
-- Progress calculation based on dual status completion
-- Dropdown status updates with visual badges
+- Size management with proper field name (product_size)
+- Customization method tracking (custom_method field)
+- Customization areas (custom_area field)
+- Supplier status tracking (separate from item status)
+- Special notes per item (note_item field)
+- Quantity tracking with price calculations
+- Visual status badges
 - Cascade deletion with orders
 
 ### 🔴 Pending Implementation
@@ -278,14 +294,23 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 '/orders/{id}/delete'         // Delete order (admin)
 '/orders/{id}/update-status'  // Update payment status
 
-// Line Item Management
-'/orders/{order_id}/line-items'       // List line items for order
-'/orders/{order_id}/line-items/create' // Add new line item
-'/orders/{order_id}/line-items/store'  // Save new line item
-'/line-items/{id}/edit'                // Edit line item
-'/line-items/{id}/update'              // Update line item
-'/line-items/{id}/delete'              // Delete line item
-'/line-items/{id}/update-status'       // Update status via AJAX
+// Customer Management
+'/customers'                    // List all customers
+'/customers/create'            // New customer form
+'/customers/store'             // Save new customer
+'/customers/{id}'              // View customer details
+'/customers/{id}/edit'         // Edit customer form
+'/customers/{id}/update'       // Update customer
+'/customers/{id}/delete'       // Delete customer (admin)
+
+// Order Item Management (formerly Line Items)
+'/orders/{order_id}/order-items'       // List order items for order
+'/orders/{order_id}/order-items/create' // Add new order item
+'/orders/{order_id}/order-items/store'  // Save new order item
+'/order-items/{id}/edit'                // Edit order item
+'/order-items/{id}/update'              // Update order item
+'/order-items/{id}/delete'              // Delete order item
+'/order-items/{id}/update-status'       // Update status via AJAX
 
 // Pending Implementation
 '/production'                     // Production dashboard
@@ -321,29 +346,39 @@ $model->count($conditions);           // Count records
 $model->fill($data);                  // Mass assignment
 
 // Order model specifics:
-$order->getLineItems();               // Get associated line items
-$order->getCapturedByUser();          // Get user who created order
-$order->updatePaymentStatus($status, $amount);
+$order->getOrderItems();              // Get associated order items
+$order->getCustomer();                // Get customer record
+$order->getUser();                    // Get user who created order
+$order->updatePaymentStatus($status);
+$order->updateOrderStatus($status);
 $order->isOverdue();                  // Check if past due date
 $order->isDueSoon();                  // Check if due within 3 days
-$order->getStatusBadge();             // HTML badge for status
-$order->getUrgencyBadge();            // HTML badge for urgency
+$order->isRushOrder();                // Check if due within 7 days
+$order->getOrderStatusBadge();        // HTML badge for order status
+$order->getPaymentStatusBadge();      // HTML badge for payment status
 
 // User model specifics:
 $user->authenticate($username, $password);
 $user->existsExcept($field, $value, $excludeId);
 $user->setPassword($password);       // Hashes with bcrypt
 
-// LineItem model specifics:
-$lineItem->getOrder();                // Get parent order
-$lineItem->updateSupplierStatus($status);
-$lineItem->updateCompletionStatus($status);
-$lineItem->getSupplierStatusBadge();  // HTML badge for supplier status
-$lineItem->getCompletionStatusBadge(); // HTML badge for completion status
-$lineItem->getSizeLabel();            // Format size for display
-$lineItem->getCustomizationMethodLabel();
-$lineItem->getProductTypeLabel();
-$lineItem->getCustomizationAreasArray(); // Parse SET field to array
+// Customer model specifics:
+$customer->getOrders();               // Get all customer orders
+$customer->getTotalOrders();          // Count of orders
+$customer->getTotalRevenue();         // Sum of order totals
+$customer->getStatusBadge();          // HTML badge for status
+$customer->formatPhoneNumber();       // Format phone for display
+
+// OrderItem model specifics:
+$orderItem->getOrder();               // Get parent order
+$orderItem->getUser();                // Get user who created item
+$orderItem->updateStatus($status);    // Update item status
+$orderItem->updateSupplierStatus($status);
+$orderItem->getStatusBadge();         // HTML badge for item status
+$orderItem->getSupplierStatusBadge(); // HTML badge for supplier status
+$orderItem->getSizeLabel();           // Format size for display
+$orderItem->getCustomMethodLabel();   // Format method for display
+$orderItem->getProductTypeLabel();
 
 // Boolean handling for MySQL:
 $model->field = $value ? 1 : 0;      // Convert to int for MySQL
@@ -379,17 +414,18 @@ $this->isGet();                      // Check if GET request
 - **Rush orders**: Automatically flagged when due date is within 7 days
 - **Overdue**: Orders past due date with payment not completed
 - **Due Soon**: Orders due within 3 days
-- **Outstanding balance**: Total value minus payments received
-- **Payment updates**: Recalculates outstanding balance automatically
-- Orders can contain multiple line items
+- **Order totals**: Fixed amount set at order creation
+- **Payment status**: Tracks unpaid/partial/paid status
+- Orders link to customers via foreign key
+- Orders can contain multiple order items with individual pricing
 - Orders track the employee who captured them
 
 ### Production Workflow
-- Line items track through dual status systems independently
-- **Supplier status**: External vendor fulfillment tracking
-- **Completion status**: Internal production progress
-- Both statuses must complete for item to be marked done
+- Order items use single status tracking (pending → in_production → completed)
+- **Item status**: Main production progress tracking
+- **Supplier status**: Separate field for vendor fulfillment tracking
 - Production progress calculated as percentage of completed items
+- Orders have independent status from items (pending → processing → completed)
 
 ### User Roles
 - **Administrator**: 
@@ -407,24 +443,28 @@ $this->isGet();                      // Check if GET request
 
 ### Product Types & Customization
 - **Products**: shirt, apron, scrub, hat, bag, beanie, business_card, yard_sign, car_magnet, greeting_card, door_hanger, magnet_business_card
-- **Methods**: HTV, DFT, Embroidery, Sublimation, Printing Services
-- **Areas**: Front, Back, Sleeve (multiple selections allowed)
-- **Sizes**: Child sizes (child_xs to child_xl), Adult sizes (XS-XXXXL)
+- **Methods**: htv (HTV), dft (DFT), embroidery, sublimation, printing_services
+- **Areas**: front, back, sleeve (stored in custom_area field)
+- **Sizes**: Stored in product_size field - child sizes (child_xs to child_xl), adult sizes (xs-xxxxl), one_size
 
 ## Database Schema Notes
 
 ### Key Tables
 - **users**: Authentication, roles, active status
-- **orders**: Client info, financial tracking, rush flag, captured_by_user_id
-- **line_items**: Products with dual-status tracking, linked to orders
+- **customers**: Customer data, addresses, contact info, status (PRIMARY KEY: customer_id)
+- **orders**: Links to customers, financial tracking, order status, payment status (PRIMARY KEY: order_id)
+- **order_items**: Products with single-status tracking, pricing, linked to orders (PRIMARY KEY: order_item_id)
 - **order_status_history**: Audit trail for status changes (future)
 
 ### Important Fields
 - Boolean fields stored as TINYINT(1) (0/1)
-- Timestamps: created_at, updated_at (automatic)
-- Foreign keys enforce referential integrity
-- ENUM types for predefined status values
+- Timestamps: date_created (orders), created_at/updated_at (users)
+- Foreign keys with CASCADE operations
+- CHECK constraints for status values (not ENUM)
 - Decimal(10,2) for financial values
+- Generated columns for calculations (total_price in order_items)
+- Proper field naming: order_id, customer_id, order_item_id (not just 'id')
+- SET field type for multiple customization areas
 
 ## Common Development Tasks
 
@@ -459,11 +499,15 @@ $this->isGet();                      // Check if GET request
 
 ### Common Issues & Solutions
 - **500 Error on toggle**: Convert boolean to int (0/1) for MySQL
-- **Router named argument error**: Use `array_values()` on params
+- **Router named argument error**: Use `array_values()` on params in Router.php line 58
 - **Session errors**: Check `/storage/` permissions (777)
 - **Database connection**: Verify `.env` settings match XAMPP config
 - **CSRF token error**: Ensure token is included in all POST forms
 - **Date validation**: Ensure date format matches MySQL (Y-m-d)
+- **Router underscore parameters**: Router regex pattern must include underscore `[a-z_]+` (line 43)
+- **Cannot call constructor**: Remove `parent::__construct()` if parent class has no constructor
+- **Undefined session key**: Use `$_SESSION['user_role']` not `$_SESSION['role']`
+- **PHP Deprecation warnings**: Use model methods (getSizeLabel, getCustomMethodLabel) instead of str_replace on null fields
 
 ### Debugging
 ```php

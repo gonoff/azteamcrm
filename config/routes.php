@@ -10,6 +10,16 @@ return [
     '/' => 'DashboardController@index',
     '/dashboard' => 'DashboardController@index',
     
+    // Customers
+    '/customers' => 'CustomerController@index',
+    '/customers/create' => 'CustomerController@create',
+    '/customers/store' => 'CustomerController@store',
+    '/customers/{id}' => 'CustomerController@show',
+    '/customers/{id}/edit' => 'CustomerController@edit',
+    '/customers/{id}/update' => 'CustomerController@update',
+    '/customers/{id}/delete' => 'CustomerController@delete',
+    '/customers/{id}/toggle-status' => 'CustomerController@toggleStatus',
+    
     // Orders
     '/orders' => 'OrderController@index',
     '/orders/create' => 'OrderController@create',
@@ -20,14 +30,14 @@ return [
     '/orders/{id}/delete' => 'OrderController@delete',
     '/orders/{id}/update-status' => 'OrderController@updateStatus',
     
-    // Line Items
-    '/orders/{order_id}/line-items' => 'LineItemController@index',
-    '/orders/{order_id}/line-items/create' => 'LineItemController@create',
-    '/orders/{order_id}/line-items/store' => 'LineItemController@store',
-    '/line-items/{id}/edit' => 'LineItemController@edit',
-    '/line-items/{id}/update' => 'LineItemController@update',
-    '/line-items/{id}/delete' => 'LineItemController@delete',
-    '/line-items/{id}/update-status' => 'LineItemController@updateStatus',
+    // Order Items
+    '/orders/{order_id}/order-items' => 'OrderItemController@index',
+    '/orders/{order_id}/order-items/create' => 'OrderItemController@create',
+    '/orders/{order_id}/order-items/store' => 'OrderItemController@store',
+    '/order-items/{id}/edit' => 'OrderItemController@edit',
+    '/order-items/{id}/update' => 'OrderItemController@update',
+    '/order-items/{id}/delete' => 'OrderItemController@delete',
+    '/order-items/{id}/update-status' => 'OrderItemController@updateStatus',
     
     // Users Management
     '/users' => 'UserController@index',
