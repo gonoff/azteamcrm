@@ -165,4 +165,174 @@ class OrderItem extends Model
         
         return ucwords(str_replace('_', ' ', $this->custom_area));
     }
+    
+    public function getUrgencyBadge()
+    {
+        if (!isset($this->urgency_level)) {
+            return '';
+        }
+        
+        $badges = [
+            'overdue' => '<span class="badge bg-danger">OVERDUE</span>',
+            'due_today' => '<span class="badge bg-warning">DUE TODAY</span>',
+            'due_soon' => '<span class="badge bg-info">DUE SOON</span>',
+            'rush' => '<span class="badge bg-danger">RUSH</span>',
+            'normal' => ''
+        ];
+        
+        return $badges[$this->urgency_level] ?? '';
+    }
+    
+    public function getRowClass()
+    {
+        if (!isset($this->urgency_level)) {
+            return '';
+        }
+        
+        $classes = [
+            'overdue' => 'table-danger',
+            'due_today' => 'table-warning',
+            'due_soon' => 'table-info',
+            'rush' => 'table-warning',
+            'normal' => ''
+        ];
+        
+        return $classes[$this->urgency_level] ?? '';
+    }
+    
+    public function getProductionItems()
+    {
+        $sql = "SELECT 
+                    oi.*, 
+                    o.order_id,
+                    o.date_due,
+                    o.order_status,
+                    o.payment_status,
+                    c.full_name as customer_name,
+                    c.company_name,
+                    c.phone_number,
+                    CASE 
+                        WHEN o.date_due < CURDATE() THEN 'overdue'
+                        WHEN o.date_due = CURDATE() THEN 'due_today'
+                        WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 3 DAY) THEN 'due_soon'
+                        WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 'rush'
+                        ELSE 'normal'
+                    END as urgency_level
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.order_id
+                JOIN customers c ON o.customer_id = c.customer_id
+                WHERE oi.order_item_status != 'completed'
+                    AND o.order_status NOT IN ('cancelled', 'on_hold')
+                ORDER BY 
+                    FIELD(urgency_level, 'overdue', 'due_today', 'due_soon', 'rush', 'normal'),
+                    o.date_due ASC";
+        
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            $results = $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+            // Add additional properties to each item
+            foreach ($results as $item) {
+                $item->customer_name = $item->customer_name ?? 'Unknown';
+                $item->company_name = $item->company_name ?? '';
+                $item->phone_number = $item->phone_number ?? '';
+                $item->urgency_level = $item->urgency_level ?? 'normal';
+            }
+            return $results;
+        }
+        return [];
+    }
+    
+    public function getCompletedTodayCount()
+    {
+        $sql = "SELECT COUNT(*) as count 
+                FROM {$this->table} 
+                WHERE order_item_status = 'completed' 
+                AND DATE(updated_at) = CURDATE()";
+        
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $result['count'] ?? 0;
+        }
+        return 0;
+    }
+    
+    public function getItemsDueToday()
+    {
+        $sql = "SELECT 
+                    oi.*, 
+                    o.order_id,
+                    o.date_due,
+                    o.order_status,
+                    c.full_name as customer_name,
+                    c.company_name,
+                    CASE 
+                        WHEN o.date_due = CURDATE() THEN 'due_today'
+                        WHEN o.date_due = DATE_ADD(CURDATE(), INTERVAL 1 DAY) THEN 'due_tomorrow'
+                        ELSE 'start_today'
+                    END as priority
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.order_id
+                JOIN customers c ON o.customer_id = c.customer_id
+                WHERE oi.order_item_status != 'completed'
+                    AND o.order_status NOT IN ('cancelled', 'on_hold')
+                    AND o.date_due <= DATE_ADD(CURDATE(), INTERVAL 2 DAY)
+                ORDER BY o.date_due ASC, priority ASC";
+        
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            return $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+        }
+        return [];
+    }
+    
+    public function getPendingProductionItems()
+    {
+        $sql = "SELECT 
+                    oi.*, 
+                    o.order_id,
+                    o.date_due,
+                    o.order_status,
+                    c.full_name as customer_name,
+                    c.company_name
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.order_id
+                JOIN customers c ON o.customer_id = c.customer_id
+                WHERE oi.order_item_status = 'pending'
+                    AND o.order_status NOT IN ('cancelled', 'on_hold')
+                ORDER BY o.date_due ASC";
+        
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            return $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+        }
+        return [];
+    }
+    
+    public function getMaterialsSummary()
+    {
+        $sql = "SELECT 
+                    product_type,
+                    product_size,
+                    custom_method,
+                    COUNT(*) as item_count,
+                    SUM(quantity) as total_quantity
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.order_id
+                WHERE oi.order_item_status != 'completed'
+                    AND o.order_status NOT IN ('cancelled', 'on_hold')
+                GROUP BY product_type, product_size, custom_method
+                ORDER BY product_type, product_size";
+        
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+        return [];
+    }
 }

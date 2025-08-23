@@ -217,33 +217,46 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 - Automatic order total recalculation when items change
 - Cascade deletion with orders
 
-### 🔴 Pending Implementation
+#### CSS Architecture & Styling
+- Centralized styling in `/assets/css/app.css` (no inline styles)
+- Color scheme variables: White, Black, Red theme
+- Bootstrap 5.1.3 with custom overrides
+- Utility classes for common patterns:
+  - `.form-inline` for inline forms
+  - `.form-hidden` for hidden forms  
+  - `.form-control-readonly` for readonly inputs
+  - `.dropdown-scrollable` for scrollable dropdowns
+  - `.alert-fixed-top` for fixed positioning alerts
+- Error page styling classes for 403/404 pages
+- All JavaScript style manipulations use CSS classes (no direct style changes)
+- Responsive design with mobile-first approach
 
-#### Production Dashboard (`/production`)
-**Purpose**: Dedicated workspace for production team to manage daily manufacturing workflow
-- **Different from Main Dashboard**: Main dashboard shows business metrics (orders, revenue, statistics), while Production Dashboard shows factory floor view (what to make today)
-- **Key Features**:
-  - View all line items across ALL orders in one place
-  - Filter by production status stages:
-    - Waiting Approval queue
-    - Artwork Approved queue  
-    - Material Prepared queue
-    - Ready for production
-  - Supplier tracking view:
-    - Items awaiting order from supplier
-    - Items with orders made
-    - Items arrived and ready
-  - Priority sorting:
-    - Rush orders at top
-    - Sort by due date
-    - Overdue items highlighted
-  - Bulk operations:
-    - Update multiple items' status at once
-    - Mark batch as completed
-  - Today's production schedule
-  - Materials needed report
-- **Target Users**: Production team members who need task-focused view rather than order-focused view
-- **Routes**: `/production`, `/production/pending`, `/production/today`
+#### Production Dashboard Module
+- **Main Dashboard** (`/production`): Factory floor view of all active production items
+  - Real-time statistics: pending, in production, completed today, rush items, overdue
+  - Filter tabs: All Active, Pending, In Production, Overdue, Due Today, Rush Orders
+  - Search functionality across order numbers, customers, and products
+  - Individual status updates via dropdown menus
+  - Bulk selection and status updates
+  - Color-coded rows for urgency (red for overdue, orange for rush, yellow for due soon)
+- **Pending Items View** (`/production/pending`): Focus on items awaiting production start
+  - Quick "Start Production" buttons
+  - Sorted by due date with visual urgency indicators
+- **Today's Schedule** (`/production/today`): Items due today and tomorrow
+  - Grouped by priority: Due Today, Due Tomorrow, Consider Starting
+  - Quick action buttons for status changes
+- **Materials Report** (`/production/materials`): Aggregated materials needed
+  - Grouped by product type, size, and customization method
+  - Export to CSV functionality
+  - Summary by product type
+- **Features**:
+  - AJAX-based status updates without page reload
+  - Keyboard navigation support
+  - Mobile responsive tables
+  - Real-time search and filtering
+  - Bulk operations with visual feedback
+
+### 🔴 Pending Implementation
 
 #### Financial Reporting Module (`/reports`)
 - Revenue reports by date range
@@ -340,15 +353,30 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 '/order-items/{id}/delete' => 'OrderItemController@delete'              // Delete item
 '/order-items/{id}/update-status' => 'OrderItemController@updateStatus' // Update status AJAX
 
+// Production Dashboard
+'/production' => 'ProductionController@index'                     // Main production dashboard
+'/production/pending' => 'ProductionController@pending'           // Pending items view
+'/production/today' => 'ProductionController@today'               // Today's schedule
+'/production/materials' => 'ProductionController@materials'       // Materials report
+'/production/bulk-update' => 'ProductionController@updateBulkStatus' // Bulk status update
+
 // Pending Implementation (currently commented in routes.php)
-// '/production' => 'ProductionController@index'           // Production dashboard
-// '/production/pending' => 'ProductionController@pending' // Pending items view
 // '/reports' => 'ReportController@index'                  // Reports dashboard
 // '/reports/financial' => 'ReportController@financial'    // Financial reports
 // '/reports/production' => 'ReportController@production'  // Production reports
 ```
 
 ## Key Architectural Patterns
+
+### CSS & Styling Guidelines
+- **No inline styles**: All styling must be in `/assets/css/app.css` or use Bootstrap utility classes
+- **JavaScript style changes**: Use `classList.add()`, `classList.remove()`, `classList.toggle()` instead of `element.style`
+- **Common utility classes**:
+  - Use `d-none` instead of `style="display: none"`
+  - Use `form-inline` for inline forms instead of `style="display: inline"`
+  - Use Bootstrap spacing utilities (`mt-3`, `p-2`, etc.) instead of inline margins/padding
+- **Error pages**: Must include both Bootstrap and app.css stylesheets
+- **Custom classes naming**: Use descriptive, kebab-case names (e.g., `error-page-gradient`, `form-control-readonly`)
 
 ### Request Flow
 1. All requests route through `/index.php` via `.htaccess` rewriting
@@ -597,6 +625,8 @@ $this->isGet();                      // Check if GET request
 - **AJAX status update errors**: Use fetch API instead of form submission for dynamic updates without page reload
 - **Database prepare() method not found**: Use `$this->db->getConnection()->prepare()` for prepared statements in models
 - **Customer not selected after creation**: Use URL parameters (`?customer_id=X`) to pass customer ID across redirects, with JavaScript bridge as fallback
+- **Inline styles in views**: Move all inline styles to `/assets/css/app.css` and use CSS classes instead
+- **JavaScript style.display changes**: Use Bootstrap's `d-none` class with `classList.add/remove()` instead of direct style manipulation
 
 ### Debugging
 ```php
@@ -654,6 +684,8 @@ Before marking a feature as complete:
 - **Core Framework**: `/app/Core/`
 - **Configuration**: `/config/`
 - **Public Assets**: `/public/`
+- **CSS Stylesheets**: `/assets/css/` (app.css for main styles, login.css for login page)
+- **JavaScript**: `/assets/js/app.js` (main application JavaScript)
 - **Storage**: `/storage/` (session files)
 - **Database Schema**: `/azteamerp.sql`
 - **Environment Config**: `/.env`

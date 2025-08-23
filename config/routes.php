@@ -53,9 +53,12 @@ return [
     '/profile' => 'UserController@profile',
     '/profile/update-password' => 'UserController@updatePassword',
     
-    // Production - COMMENTED: Controller doesn't exist
-    // '/production' => 'ProductionController@index',
-    // '/production/pending' => 'ProductionController@pending',
+    // Production
+    '/production' => 'ProductionController@index',
+    '/production/pending' => 'ProductionController@pending',
+    '/production/today' => 'ProductionController@today',
+    '/production/materials' => 'ProductionController@materials',
+    '/production/bulk-update' => 'ProductionController@updateBulkStatus',
     
     // Reports - COMMENTED: Controller doesn't exist
     // '/reports' => 'ReportController@index',

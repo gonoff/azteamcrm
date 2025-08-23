@@ -48,12 +48,12 @@
                                 <i class="bi bi-cart3"></i> Orders
                             </a>
                         </li>
-                        <?php /* Commented out - Controllers/Views not implemented yet
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/production">
                                 <i class="bi bi-gear"></i> Production
                             </a>
                         </li>
+                        <?php /* Commented out - Controllers/Views not implemented yet
                         <?php if ($_SESSION['user_role'] === 'administrator'): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/reports">
