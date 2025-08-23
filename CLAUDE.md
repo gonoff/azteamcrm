@@ -151,6 +151,8 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
   - Keyboard navigation support (arrow keys, enter, escape)
   - Visual feedback with loading spinner
   - Selected customer display with change option
+  - URL parameter-based customer selection when returning from customer creation
+  - JavaScript bridge ensures customer ID is always set in hidden input
 - Edit existing orders
 - Delete orders (admin only)
 - View detailed order information with customer links
@@ -194,7 +196,8 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 - Revenue and order statistics per customer
 - Relationship with orders via foreign key
 - Return URL mechanism for seamless workflow when creating customers from orders
-- Automatic customer selection after creation when returning to order form
+- Automatic customer selection via URL parameters when returning to order form
+- Customer ID passed in URL for reliable state management across redirects
 
 #### Order Item Management Module (formerly Line Items)
 - Full CRUD operations for order items within orders
@@ -554,6 +557,15 @@ $this->isGet();                      // Check if GET request
    })
    ```
 
+### Customer Selection in Order Forms
+1. **URL Parameter Approach**: Pass customer ID in URL when returning from customer creation
+   - CustomerController adds `?customer_id=X` to return URL
+   - OrderController checks `$_GET['customer_id']` first
+2. **JavaScript Bridge**: Fallback that syncs display with hidden input
+   - Add `data-customer-id` attribute to customer display
+   - JavaScript extracts ID and sets hidden input if empty
+3. **State Management**: URL parameters more reliable than sessions for cross-redirect state
+
 ### Working with Models
 1. Create model in `/app/Models/`
 2. Extend `App\Core\Model`
@@ -577,13 +589,14 @@ $this->isGet();                      // Check if GET request
 - **PHP Deprecation warnings**: Use model methods (getSizeLabel, getCustomMethodLabel) instead of str_replace on null fields
 - **Outstanding balance null error**: Use `$order->getOutstandingBalance()` method instead of accessing non-existent property
 - **404 on form submission**: Fixed redirect() method to prevent double base path (/azteamcrm//azteamcrm/...)
-- **Customer creation flow**: Implemented return URL mechanism for seamless order-to-customer-to-order workflow
+- **Customer creation flow**: Implemented URL parameter mechanism for reliable customer selection after creation
 - **CSRF token validation on delete**: Pass csrf_token to views and use consistent variable names
 - **404 on delete/form actions**: Form actions and links in views must use full `/azteamcrm/` prefix, while controller redirects use relative paths
 - **Order total before items**: Order total is now auto-calculated from items, no longer required at order creation
 - **Status updates not saving**: Model update methods must set both `$this->attributes[]` array AND object properties
 - **AJAX status update errors**: Use fetch API instead of form submission for dynamic updates without page reload
 - **Database prepare() method not found**: Use `$this->db->getConnection()->prepare()` for prepared statements in models
+- **Customer not selected after creation**: Use URL parameters (`?customer_id=X`) to pass customer ID across redirects, with JavaScript bridge as fallback
 
 ### Debugging
 ```php

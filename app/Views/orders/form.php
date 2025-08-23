@@ -1,4 +1,14 @@
-<?php include dirname(__DIR__) . '/layouts/header.php'; ?>
+<?php 
+// Store old input and errors before clearing them
+$old_input = $_SESSION['old_input'] ?? [];
+$errors_from_session = $_SESSION['errors'] ?? $errors ?? [];
+$errors = $errors_from_session;
+
+// Clear session data after capturing the values
+unset($_SESSION['old_input'], $_SESSION['errors']);
+
+include dirname(__DIR__) . '/layouts/header.php'; 
+?>
 
 <div class="row justify-content-center">
     <div class="col-md-8">
@@ -24,7 +34,7 @@
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
                 
-                <form method="POST" action="<?= $order ? "/azteamcrm/orders/{$order->order_id}/update" : "/azteamcrm/orders/store" ?>" class="needs-validation" novalidate>
+                <form method="POST" action="<?= $order ? "/azteamcrm/orders/{$order->order_id}/update" : "/azteamcrm/orders/store" ?>" class="needs-validation" novalidate autocomplete="off">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     
                     <div class="row">
@@ -35,8 +45,8 @@
                             <input type="hidden" 
                                    id="customer_id" 
                                    name="customer_id" 
-                                   value="<?= $_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '' ?>"
-                                   required>
+                                   value="<?= htmlspecialchars($selectedCustomerId ?? '') ?>"
+                                   data-required="true">
                             
                             <!-- Search input for customer selection -->
                             <div class="position-relative">
@@ -44,7 +54,8 @@
                                        class="form-control <?= isset($errors['customer_id']) ? 'is-invalid' : '' ?>" 
                                        id="customer_search" 
                                        placeholder="Type to search customers by name, company, or phone..."
-                                       autocomplete="off">
+                                       autocomplete="off"
+                                       style="<?= (isset($selected_customer) && $selected_customer) || (isset($displayCustomer) && $displayCustomer) ? 'display: none;' : '' ?>">
                                 
                                 <!-- Loading spinner -->
                                 <div class="position-absolute top-50 end-0 translate-middle-y me-3 d-none" id="search_spinner">
@@ -62,36 +73,49 @@
                             <!-- Selected customer display -->
                             <div id="selected_customer" class="mt-2">
                                 <?php 
-                                // Check if we have a pre-selected customer
+                                // Simplified logic - trust what the controller provides
+                                $displayCustomer = null;
                                 $selectedCustomerId = null;
-                                $selectedCustomer = null;
                                 
-                                if (isset($selected_customer_id)) {
-                                    $selectedCustomerId = $selected_customer_id;
-                                } elseif ($_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '') {
-                                    $selectedCustomerId = $_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '';
-                                }
-                                
-                                if ($selectedCustomerId) {
-                                    // Find the selected customer from the list
+                                // Priority 1: Customer passed from controller (URL param or session)
+                                if (isset($selected_customer) && $selected_customer) {
+                                    $displayCustomer = $selected_customer;
+                                    $selectedCustomerId = $selected_customer->customer_id;
+                                } 
+                                // Priority 2: Customer from old input (validation failure)
+                                elseif (!empty($old_input['customer_id'])) {
+                                    $selectedCustomerId = $old_input['customer_id'];
+                                    // Find the customer in the list
                                     foreach ($customers as $customer) {
                                         if ($customer->customer_id == $selectedCustomerId) {
-                                            $selectedCustomer = $customer;
+                                            $displayCustomer = $customer;
                                             break;
                                         }
                                     }
                                 }
-                                
-                                if ($selectedCustomer): 
+                                // Priority 3: Existing order customer
+                                elseif ($order && $order->customer_id) {
+                                    $selectedCustomerId = $order->customer_id;
+                                    foreach ($customers as $customer) {
+                                        if ($customer->customer_id == $selectedCustomerId) {
+                                            $displayCustomer = $customer;
+                                            break;
+                                        }
+                                    }
+                                }
                                 ?>
-                                    <div class="alert alert-info d-flex justify-content-between align-items-center py-2">
+                                <!-- Debug: Customer ID = <?= htmlspecialchars($selectedCustomerId ?? 'null') ?> -->
+                                <?php
+                                if ($displayCustomer): 
+                                ?>
+                                    <div class="alert alert-info alert-permanent d-flex justify-content-between align-items-center py-2" data-customer-id="<?= $displayCustomer->customer_id ?>">
                                         <div>
-                                            <strong><?= htmlspecialchars($selectedCustomer->full_name) ?></strong>
-                                            <?php if ($selectedCustomer->company_name): ?>
-                                                <br><small><?= htmlspecialchars($selectedCustomer->company_name) ?></small>
+                                            <strong><?= htmlspecialchars($displayCustomer->full_name) ?></strong>
+                                            <?php if ($displayCustomer->company_name): ?>
+                                                <br><small><?= htmlspecialchars($displayCustomer->company_name) ?></small>
                                             <?php endif; ?>
-                                            <?php if ($selectedCustomer->phone_number): ?>
-                                                <br><small><?= $selectedCustomer->formatPhoneNumber() ?></small>
+                                            <?php if ($displayCustomer->phone_number): ?>
+                                                <br><small><?= $displayCustomer->formatPhoneNumber() ?></small>
                                             <?php endif; ?>
                                         </div>
                                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearCustomerSelection()">
@@ -124,7 +148,7 @@
                                    class="form-control <?= isset($errors['date_due']) ? 'is-invalid' : '' ?>" 
                                    id="date_due" 
                                    name="date_due" 
-                                   value="<?= $_SESSION['old_input']['date_due'] ?? $order->date_due ?? '' ?>" 
+                                   value="<?= $old_input['date_due'] ?? $order->date_due ?? '' ?>" 
                                    min="<?= date('Y-m-d') ?>"
                                    required>
                             <?php if (isset($errors['date_due'])): ?>
@@ -136,7 +160,7 @@
                         <div class="col-md-4 mb-3">
                             <label for="order_status" class="form-label">Order Status</label>
                             <select class="form-select" id="order_status" name="order_status">
-                                <?php $selectedStatus = $_SESSION['old_input']['order_status'] ?? $order->order_status ?? 'pending'; ?>
+                                <?php $selectedStatus = $old_input['order_status'] ?? $order->order_status ?? 'pending'; ?>
                                 <option value="pending" <?= $selectedStatus === 'pending' ? 'selected' : '' ?>>Pending</option>
                                 <option value="in_production" <?= $selectedStatus === 'in_production' ? 'selected' : '' ?>>In Production</option>
                                 <option value="completed" <?= $selectedStatus === 'completed' ? 'selected' : '' ?>>Completed</option>
@@ -147,7 +171,7 @@
                         <div class="col-md-4 mb-3">
                             <label for="payment_status" class="form-label">Payment Status</label>
                             <select class="form-select" id="payment_status" name="payment_status">
-                                <?php $selectedPayment = $_SESSION['old_input']['payment_status'] ?? $order->payment_status ?? 'unpaid'; ?>
+                                <?php $selectedPayment = $old_input['payment_status'] ?? $order->payment_status ?? 'unpaid'; ?>
                                 <option value="unpaid" <?= $selectedPayment === 'unpaid' ? 'selected' : '' ?>>Unpaid</option>
                                 <option value="partial" <?= $selectedPayment === 'partial' ? 'selected' : '' ?>>Partial</option>
                                 <option value="paid" <?= $selectedPayment === 'paid' ? 'selected' : '' ?>>Paid</option>
@@ -190,7 +214,7 @@
                                   id="order_notes" 
                                   name="order_notes" 
                                   rows="4"
-                                  placeholder="Enter any special instructions or notes about this order..."><?= htmlspecialchars($_SESSION['old_input']['order_notes'] ?? $order->order_notes ?? '') ?></textarea>
+                                  placeholder="Enter any special instructions or notes about this order..."><?= htmlspecialchars($old_input['order_notes'] ?? $order->order_notes ?? '') ?></textarea>
                         <small class="text-muted">Optional: Add any relevant information about the order</small>
                     </div>
                     
@@ -237,10 +261,14 @@ function initCustomerSearch() {
     const customerIdInput = document.getElementById('customer_id');
     const selectedCustomerDiv = document.getElementById('selected_customer');
     
-    // Check if customer is already selected on page load
+    // Check if customer is already selected on page load (PHP has already set visibility)
     if (customerIdInput.value && selectedCustomerDiv.querySelector('.alert')) {
+        console.log('Customer pre-selected with ID:', customerIdInput.value);
+        // Ensure search input stays hidden
         searchInput.style.display = 'none';
     }
+    
+    // No observers needed - hidden input is the source of truth
     
     // Handle search input
     searchInput.addEventListener('input', function() {
@@ -357,8 +385,10 @@ function selectCustomer(customerId, fullName, companyName, phoneNumber) {
     const selectedCustomerDiv = document.getElementById('selected_customer');
     const resultsDropdown = document.getElementById('customer_results');
     
-    // Set the customer ID
+    // Set the customer ID - this is the most important part
     customerIdInput.value = customerId;
+    console.log('Customer selected, setting hidden input to:', customerId);
+    console.log('Hidden input value after setting:', customerIdInput.value);
     
     // Hide search input and show selected customer
     searchInput.style.display = 'none';
@@ -367,7 +397,7 @@ function selectCustomer(customerId, fullName, companyName, phoneNumber) {
     
     // Display selected customer
     let customerHtml = `
-        <div class="alert alert-info d-flex justify-content-between align-items-center py-2">
+        <div class="alert alert-info alert-permanent d-flex justify-content-between align-items-center py-2" data-customer-id="${customerId}">
             <div>
                 <strong>${escapeHtml(fullName)}</strong>
     `;
@@ -389,10 +419,18 @@ function selectCustomer(customerId, fullName, companyName, phoneNumber) {
     
     selectedCustomerDiv.innerHTML = customerHtml;
     
-    // Remove invalid feedback if it exists
+    // Hidden input value is already set, no need for localStorage
+    
+    // Remove any validation errors
     const invalidFeedback = document.querySelector('.invalid-feedback.d-block');
     if (invalidFeedback) {
         invalidFeedback.classList.remove('d-block');
+    }
+    
+    // Remove customer error alert if it exists
+    const customerError = document.querySelector('.customer-error-alert');
+    if (customerError) {
+        customerError.remove();
     }
 }
 
@@ -401,12 +439,17 @@ function clearCustomerSelection() {
     const customerIdInput = document.getElementById('customer_id');
     const selectedCustomerDiv = document.getElementById('selected_customer');
     
+    console.log('Clearing customer selection');
+    
     // Clear selection
     customerIdInput.value = '';
     selectedCustomerDiv.innerHTML = '';
     
+    // No localStorage to clear
+    
     // Show search input again
     searchInput.style.display = 'block';
+    searchInput.value = '';
     searchInput.focus();
 }
 
@@ -435,11 +478,92 @@ function escapeHtml(text) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Log initial state for debugging
+    const customerIdInput = document.getElementById('customer_id');
+    const selectedCustomerDiv = document.getElementById('selected_customer');
+    console.log('Page loaded - Customer ID input:', customerIdInput);
+    console.log('Page loaded - Customer ID value:', customerIdInput ? customerIdInput.value : 'input not found');
+    console.log('Page loaded - Customer ID value type:', customerIdInput ? typeof customerIdInput.value : 'N/A');
+    console.log('Page loaded - Customer ID value length:', customerIdInput ? customerIdInput.value.length : 'N/A');
+    console.log('Page loaded - Selected customer div has content:', selectedCustomerDiv.innerHTML.trim() !== '');
+    
+    // JavaScript Bridge: If customer is displayed but hidden input is empty, fix it
+    const customerAlert = selectedCustomerDiv.querySelector('[data-customer-id]');
+    if (customerAlert && customerAlert.dataset.customerId) {
+        if (!customerIdInput.value || customerIdInput.value === '') {
+            console.log('JavaScript Bridge: Setting customer ID from display:', customerAlert.dataset.customerId);
+            customerIdInput.value = customerAlert.dataset.customerId;
+            
+            // Also hide the search input if it's visible
+            const searchInput = document.getElementById('customer_search');
+            if (searchInput) {
+                searchInput.style.display = 'none';
+            }
+        }
+    }
+    
     // Initialize customer search
     initCustomerSearch();
     
-    // Clear old input from session
-    <?php unset($_SESSION['old_input'], $_SESSION['errors']); ?>
+    // Handle form submission and validation
+    const orderForm = document.querySelector('form.needs-validation');
+    if (orderForm) {
+        // Override default validation behavior to preserve customer
+        orderForm.addEventListener('submit', function(e) {
+            // Get fresh DOM references for validation
+            const customerIdInput = document.getElementById('customer_id');
+            const selectedCustomerDiv = document.getElementById('selected_customer');
+            
+            console.log('Form submission - Customer ID input element:', customerIdInput);
+            console.log('Form submission - Customer ID value:', customerIdInput ? customerIdInput.value : 'input not found');
+            
+            // Custom validation for customer selection
+            if (!customerIdInput || !customerIdInput.value || customerIdInput.value === '') {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Show error message for missing customer
+                const customerError = document.createElement('div');
+                customerError.className = 'alert alert-danger mt-2';
+                customerError.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Please select a customer before submitting the order.';
+                
+                // Remove any existing error
+                const existingError = document.querySelector('.customer-error-alert');
+                if (existingError) {
+                    existingError.remove();
+                }
+                
+                // Add error after customer search div
+                customerError.classList.add('customer-error-alert');
+                const customerSearchDiv = document.getElementById('customer_search').parentElement;
+                customerSearchDiv.parentElement.appendChild(customerError);
+                
+                // Focus on customer search
+                const searchInput = document.getElementById('customer_search');
+                if (searchInput.style.display !== 'none') {
+                    searchInput.focus();
+                }
+                
+                console.log('Form submission blocked: No customer selected');
+                return false;
+            }
+            
+            // Check other form validation
+            if (!this.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.classList.add('was-validated');
+                console.log('Form validation failed (non-customer fields)');
+                return false;
+            }
+            
+            // Form is valid and has customer - allow submission
+            console.log('Form valid, submitting with customer ID:', customerIdInput.value);
+            // Form will submit and page will reload
+        }, false);
+    }
+    
+    // Session data already cleared at the top of the file
 });
 </script>
 

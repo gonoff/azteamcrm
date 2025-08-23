@@ -98,9 +98,11 @@ class CustomerController extends Controller
             // Check if there's a return URL
             $returnUrl = $_POST['return_url'] ?? null;
             if ($returnUrl) {
-                // If returning to order creation, store the new customer ID
+                // If returning to order creation, add customer ID to URL
                 if (strpos($returnUrl, '/orders/create') !== false) {
-                    $_SESSION['new_customer_id'] = $newCustomer->customer_id;
+                    // Add customer ID as URL parameter
+                    $separator = strpos($returnUrl, '?') !== false ? '&' : '?';
+                    $returnUrl .= $separator . 'customer_id=' . $newCustomer->customer_id;
                 }
                 $this->redirect($returnUrl);
             } else {

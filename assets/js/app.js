@@ -12,14 +12,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Auto-hide alerts after 5 seconds
-    const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+    // Auto-hide alerts after 5 seconds (excluding permanent alerts)
+    const alerts = document.querySelectorAll('.alert:not(.alert-permanent):not(#selected_customer .alert)');
     alerts.forEach(alert => {
-        setTimeout(() => {
-            alert.style.transition = 'opacity 0.5s';
-            alert.style.opacity = '0';
-            setTimeout(() => alert.remove(), 500);
-        }, 5000);
+        // Don't auto-hide if it's inside the customer selection area
+        if (!alert.closest('#selected_customer')) {
+            setTimeout(() => {
+                alert.style.transition = 'opacity 0.5s';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 500);
+            }, 5000);
+        }
     });
     
     // Confirm delete actions
@@ -84,15 +87,34 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Form validation feedback
+    // Form validation feedback - Skip order forms as they have custom validation
     const forms = document.querySelectorAll('.needs-validation');
     forms.forEach(form => {
+        // Skip if this is the order form (it has its own validation in orders/form.php)
+        if (form.action && form.action.includes('/orders/')) {
+            return;
+        }
+        
         form.addEventListener('submit', function(event) {
+            // Save customer selection before validation (for non-order forms)
+            const customerIdInput = document.getElementById('customer_id');
+            const selectedCustomerDiv = document.getElementById('selected_customer');
+            const savedCustomerId = customerIdInput ? customerIdInput.value : null;
+            const savedCustomerHtml = selectedCustomerDiv ? selectedCustomerDiv.innerHTML : null;
+            
             if (!form.checkValidity()) {
                 event.preventDefault();
                 event.stopPropagation();
             }
             form.classList.add('was-validated');
+            
+            // Restore customer selection after validation
+            if (savedCustomerId && customerIdInput) {
+                customerIdInput.value = savedCustomerId;
+            }
+            if (savedCustomerHtml && selectedCustomerDiv) {
+                selectedCustomerDiv.innerHTML = savedCustomerHtml;
+            }
         });
     });
     
@@ -100,14 +122,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const dueDateInput = document.getElementById('due_date');
     const receivedDateInput = document.getElementById('date_received');
     
-    if (dueDateInput && receivedDateInput) {
+    if (dueDateInput) {
         dueDateInput.addEventListener('change', function() {
-            if (this.value && receivedDateInput.value) {
+            // Preserve customer selection during validation
+            const customerIdInput = document.getElementById('customer_id');
+            const selectedCustomerDiv = document.getElementById('selected_customer');
+            const savedCustomerId = customerIdInput ? customerIdInput.value : null;
+            const savedCustomerHtml = selectedCustomerDiv ? selectedCustomerDiv.innerHTML : null;
+            
+            if (receivedDateInput && this.value && receivedDateInput.value) {
                 if (new Date(this.value) < new Date(receivedDateInput.value)) {
                     this.setCustomValidity('Due date must be after received date');
                 } else {
                     this.setCustomValidity('');
                 }
+            }
+            
+            // Restore customer selection if it was cleared
+            if (savedCustomerId && customerIdInput && customerIdInput.value !== savedCustomerId) {
+                customerIdInput.value = savedCustomerId;
+            }
+            if (savedCustomerHtml && selectedCustomerDiv && selectedCustomerDiv.innerHTML !== savedCustomerHtml) {
+                selectedCustomerDiv.innerHTML = savedCustomerHtml;
             }
         });
     }

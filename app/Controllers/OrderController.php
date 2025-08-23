@@ -63,10 +63,45 @@ class OrderController extends Controller
         $customers = $customer->findAll(['customer_status' => 'active'], 'full_name ASC');
         
         // Check if returning from customer creation with a new customer ID
-        $selectedCustomerId = null;
-        if (isset($_SESSION['new_customer_id'])) {
-            $selectedCustomerId = $_SESSION['new_customer_id'];
-            unset($_SESSION['new_customer_id']);
+        $selectedCustomer = null;
+        
+        // First priority: Check if customer ID passed in URL (from customer creation)
+        if (isset($_GET['customer_id']) && $_GET['customer_id']) {
+            $selectedCustomer = $customer->find($_GET['customer_id']);
+            if ($selectedCustomer) {
+                // Add to customers array if not already present
+                $customerExists = false;
+                foreach ($customers as $existingCustomer) {
+                    if ($existingCustomer->customer_id == $selectedCustomer->customer_id) {
+                        $customerExists = true;
+                        break;
+                    }
+                }
+                if (!$customerExists) {
+                    array_unshift($customers, $selectedCustomer);
+                }
+            }
+        } elseif (isset($_SESSION['old_input']['customer_id']) && $_SESSION['old_input']['customer_id']) {
+            // If coming from failed validation, ensure the customer is selected
+            $customerId = $_SESSION['old_input']['customer_id'];
+            $customerExists = false;
+            
+            // Check if customer is already in the list and select it
+            foreach ($customers as $existingCustomer) {
+                if ($existingCustomer->customer_id == $customerId) {
+                    $selectedCustomer = $existingCustomer;
+                    $customerExists = true;
+                    break;
+                }
+            }
+            
+            // If not in list, fetch and add it
+            if (!$customerExists) {
+                $selectedCustomer = $customer->find($customerId);
+                if ($selectedCustomer) {
+                    array_unshift($customers, $selectedCustomer);
+                }
+            }
         }
         
         // Restore form data if returning from customer creation
@@ -80,7 +115,7 @@ class OrderController extends Controller
             'csrf_token' => $this->csrf(),
             'order' => null,
             'customers' => $customers,
-            'selected_customer_id' => $selectedCustomerId
+            'selected_customer' => $selectedCustomer
         ]);
     }
     
@@ -143,10 +178,26 @@ class OrderController extends Controller
         $customers = $customer->findAll(['customer_status' => 'active'], 'full_name ASC');
         
         // Check if returning from customer creation with a new customer ID
-        $selectedCustomerId = null;
+        $selectedCustomer = null;
         if (isset($_SESSION['new_customer_id'])) {
-            $selectedCustomerId = $_SESSION['new_customer_id'];
+            // Fetch the newly created customer directly
+            $selectedCustomer = $customer->find($_SESSION['new_customer_id']);
             unset($_SESSION['new_customer_id']);
+            
+            // Add the new customer to the customers array if not already present
+            if ($selectedCustomer) {
+                $customerExists = false;
+                foreach ($customers as $existingCustomer) {
+                    if ($existingCustomer->customer_id == $selectedCustomer->customer_id) {
+                        $customerExists = true;
+                        break;
+                    }
+                }
+                if (!$customerExists) {
+                    // Add at the beginning so it's easy to find
+                    array_unshift($customers, $selectedCustomer);
+                }
+            }
         }
         
         $this->view('orders/form', [
@@ -154,7 +205,7 @@ class OrderController extends Controller
             'csrf_token' => $this->csrf(),
             'order' => $orderData,
             'customers' => $customers,
-            'selected_customer_id' => $selectedCustomerId
+            'selected_customer' => $selectedCustomer
         ]);
     }
     
