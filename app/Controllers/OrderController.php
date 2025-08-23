@@ -98,8 +98,7 @@ class OrderController extends Controller
         
         $errors = $this->validate($data, [
             'customer_id' => 'required',
-            'date_due' => 'required',
-            'order_total' => 'required'
+            'date_due' => 'required'
         ]);
         
         if (!empty($errors)) {
@@ -108,6 +107,8 @@ class OrderController extends Controller
             $this->redirect('/orders/create');
         }
         
+        // Set order_total to 0.00 for new orders (will be calculated from items)
+        $data['order_total'] = 0.00;
         $data['user_id'] = $_SESSION['user_id'];
         $data['order_status'] = $data['order_status'] ?? 'pending';
         $data['payment_status'] = $data['payment_status'] ?? 'unpaid';
@@ -178,8 +179,7 @@ class OrderController extends Controller
         
         $errors = $this->validate($data, [
             'customer_id' => 'required',
-            'date_due' => 'required',
-            'order_total' => 'required'
+            'date_due' => 'required'
         ]);
         
         if (!empty($errors)) {
@@ -187,6 +187,9 @@ class OrderController extends Controller
             $_SESSION['old_input'] = $data;
             $this->redirect('/orders/' . $id . '/edit');
         }
+        
+        // Don't allow manual order_total updates - it's calculated from items
+        unset($data['order_total']);
         
         // Keep existing order status and payment status if not changed
         if (!isset($data['order_status'])) {

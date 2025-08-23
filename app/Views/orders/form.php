@@ -109,23 +109,23 @@
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="order_total" class="form-label">Order Total <span class="text-danger">*</span></label>
+                            <label for="order_total" class="form-label">Order Total</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
-                                <input type="number" 
-                                       class="form-control <?= isset($errors['order_total']) ? 'is-invalid' : '' ?>" 
+                                <input type="text" 
+                                       class="form-control" 
                                        id="order_total" 
-                                       name="order_total" 
-                                       value="<?= $_SESSION['old_input']['order_total'] ?? $order->order_total ?? '' ?>" 
-                                       step="0.01"
-                                       min="0"
-                                       placeholder="0.00"
-                                       required>
-                                <?php if (isset($errors['order_total'])): ?>
-                                    <div class="invalid-feedback"><?= htmlspecialchars($errors['order_total']) ?></div>
-                                <?php endif; ?>
+                                       value="<?= number_format($order->order_total ?? 0.00, 2) ?>" 
+                                       readonly
+                                       style="background-color: #f8f9fa;">
                             </div>
-                            <small class="text-muted">Enter the total amount to charge</small>
+                            <small class="text-muted">
+                                <?php if ($order): ?>
+                                    Total is automatically calculated from order items
+                                <?php else: ?>
+                                    Add items to the order to calculate the total
+                                <?php endif; ?>
+                            </small>
                         </div>
                         
                         <div class="col-md-6 mb-3">
