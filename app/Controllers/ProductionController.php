@@ -156,6 +156,25 @@ class ProductionController extends Controller
             }
         }
         
+        // Sync order statuses for affected orders (only if updating item status, not supplier status)
+        if ($statusType === 'order_item_status' && $successCount > 0) {
+            $affectedOrders = [];
+            foreach ($itemIds as $itemId) {
+                $item = $orderItem->find($itemId);
+                if ($item && !in_array($item->order_id, $affectedOrders)) {
+                    $affectedOrders[] = $item->order_id;
+                }
+            }
+            
+            $order = new Order();
+            foreach ($affectedOrders as $orderId) {
+                $orderData = $order->find($orderId);
+                if ($orderData) {
+                    $orderData->syncStatusFromItems();
+                }
+            }
+        }
+        
         if ($successCount > 0 && $failCount === 0) {
             $this->json([
                 'success' => true,

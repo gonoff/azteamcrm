@@ -114,8 +114,8 @@
     </li>
 </ul>
 
-<!-- Bulk Actions Bar (hidden by default) -->
-<div id="bulkActionsBar" class="alert alert-info d-none mb-3">
+<!-- Bulk Actions Bar -->
+<div id="bulkActionsBar" class="bulk-actions-bar mb-3">
     <div class="d-flex justify-content-between align-items-center">
         <div>
             <strong><span id="selectedCount">0</span> items selected</strong>
@@ -127,7 +127,26 @@
             <button class="btn btn-sm btn-success" onclick="bulkUpdateStatus('completed')">
                 <i class="bi bi-check-circle"></i> Mark Completed
             </button>
-            <button class="btn btn-sm btn-secondary" onclick="clearSelection()">
+            <div class="dropdown d-inline">
+                <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-truck"></i> Update Supplier Status
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="bulkUpdateSupplierStatus('awaiting_order'); return false;">
+                        <span class="badge badge-secondary">Awaiting Order</span>
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="bulkUpdateSupplierStatus('order_made'); return false;">
+                        <span class="badge badge-info">Order Made</span>
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="bulkUpdateSupplierStatus('order_arrived'); return false;">
+                        <span class="badge badge-primary">Order Arrived</span>
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="bulkUpdateSupplierStatus('order_delivered'); return false;">
+                        <span class="badge badge-success">Order Delivered</span>
+                    </a></li>
+                </ul>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">
                 <i class="bi bi-x"></i> Clear Selection
             </button>
         </div>
@@ -340,12 +359,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateBulkActionsBar() {
         const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
         
-        if (checkedCount > 0) {
-            bulkActionsBar.classList.remove('d-none');
-            selectedCount.textContent = checkedCount;
-        } else {
-            bulkActionsBar.classList.add('d-none');
-        }
+        // Always update the count, never hide the bar
+        selectedCount.textContent = checkedCount;
         
         // Update select all checkbox
         selectAll.checked = checkedCount === checkboxes.length && checkedCount > 0;
@@ -448,12 +463,18 @@ function bulkUpdateStatus(status) {
         return;
     }
     
+    const formData = new URLSearchParams();
+    formData.append('csrf_token', '<?= $csrf_token ?>');
+    formData.append('status_type', 'order_item_status');
+    formData.append('status_value', status);
+    selectedIds.forEach(id => formData.append('item_ids[]', id));
+    
     fetch('/azteamcrm/production/bulk-update', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `csrf_token=<?= $csrf_token ?>&status_type=order_item_status&status_value=${status}&item_ids[]=${selectedIds.join('&item_ids[]=')}`
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
@@ -470,10 +491,52 @@ function bulkUpdateStatus(status) {
     });
 }
 
+function bulkUpdateSupplierStatus(status) {
+    const selectedIds = Array.from(document.querySelectorAll('.item-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        showAlert('warning', 'No items selected');
+        return;
+    }
+    
+    if (!confirm(`Update supplier status for ${selectedIds.length} items to ${status.replace(/_/g, ' ')}?`)) {
+        return;
+    }
+    
+    const formData = new URLSearchParams();
+    formData.append('csrf_token', '<?= $csrf_token ?>');
+    formData.append('status_type', 'supplier_status');
+    formData.append('status_value', status);
+    selectedIds.forEach(id => formData.append('item_ids[]', id));
+    
+    fetch('/azteamcrm/production/bulk-update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('danger', data.message || 'Failed to update supplier status');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('danger', 'An error occurred while updating supplier status');
+    });
+}
+
 function clearSelection() {
     document.querySelectorAll('.item-checkbox:checked').forEach(cb => cb.checked = false);
     document.getElementById('selectAll').checked = false;
-    document.getElementById('bulkActionsBar').classList.add('d-none');
+    // Update the count to show 0 items selected
+    document.getElementById('selectedCount').textContent = '0';
 }
 
 function showAlert(type, message) {

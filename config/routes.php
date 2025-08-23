@@ -30,6 +30,7 @@ return [
     '/orders/{id}/update' => 'OrderController@update',
     '/orders/{id}/delete' => 'OrderController@delete',
     '/orders/{id}/update-status' => 'OrderController@updateStatus',
+    '/orders/{id}/cancel' => 'OrderController@cancelOrder',
     
     // Order Items
     '/orders/{order_id}/order-items' => 'OrderItemController@index',

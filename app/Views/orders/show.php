@@ -9,6 +9,13 @@
         <a href="/azteamcrm/orders/<?= $order->order_id ?>/edit" class="btn btn-primary">
             <i class="bi bi-pencil"></i> Edit Order
         </a>
+        
+        <?php if (!in_array($order->order_status, ['cancelled', 'completed'])): ?>
+            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">
+                <i class="bi bi-x-circle"></i> Cancel Order
+            </button>
+        <?php endif; ?>
+        
         <?php if ($_SESSION['user_role'] === 'administrator'): ?>
             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteOrderModal">
                 <i class="bi bi-trash"></i> Delete Order
@@ -321,5 +328,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<!-- Cancel Order Modal -->
+<?php if (!in_array($order->order_status, ['cancelled', 'completed'])): ?>
+<div class="modal fade" id="cancelOrderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancel Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this order for <strong><?= htmlspecialchars($customer ? $customer->full_name : 'Unknown Customer') ?></strong>?</p>
+                <p class="text-warning"><i class="bi bi-exclamation-triangle"></i> This will mark the order as cancelled. The order items will remain unchanged.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form action="/azteamcrm/orders/<?= $order->order_id ?>/cancel" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-x-circle"></i> Cancel Order
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php include dirname(__DIR__) . '/layouts/footer.php'; ?>

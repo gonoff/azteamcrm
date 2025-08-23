@@ -80,11 +80,13 @@ class OrderItem extends Model
     
     public function getStatusBadge()
     {
+        // Item status is now limited to: pending, in_production, completed
+        // 'cancelled' is kept for legacy data but not available in forms
         $badges = [
             'pending' => '<span class="badge badge-warning">Pending</span>',
             'in_production' => '<span class="badge badge-info">In Production</span>',
             'completed' => '<span class="badge badge-success">Completed</span>',
-            'cancelled' => '<span class="badge badge-secondary">Cancelled</span>'
+            'cancelled' => '<span class="badge badge-secondary">Cancelled</span>' // Legacy support
         ];
         
         return $badges[$this->order_item_status] ?? '<span class="badge badge-secondary">' . ucfirst($this->order_item_status) . '</span>';

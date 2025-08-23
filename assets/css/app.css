@@ -443,6 +443,15 @@ a:hover {
     color: #dc3545;
 }
 
+/* Bulk Actions Bar - Permanent UI element */
+.bulk-actions-bar {
+    padding: 1rem;
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    border-radius: 0.25rem;
+    color: #0c5460;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .sidebar {

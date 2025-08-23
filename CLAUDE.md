@@ -63,8 +63,20 @@ Plan → Implement → Test → Fix Bugs → Test Again → Update Docs → Next
 - **Users**: Role-based authentication (administrator, production_team)
 
 ### Status Workflows
-1. **Order Status**: pending → processing → completed (or cancelled/on_hold)
-2. **Order Item Status**: pending → in_production → completed
+
+#### Automatic Order Status Synchronization (NEW)
+- **Order status is automatically determined** by the status of its items
+- Users only manage item statuses; order status updates automatically
+- Order status logic:
+  - `pending`: When all items are pending (or no items exist)
+  - `in_production`: When at least one item is in production
+  - `completed`: When all items are completed
+  - `cancelled`: Manual override only (stops auto-sync)
+- Manual cancellation available for special cases
+
+#### Status Progression
+1. **Order Status**: Automatically synced from items (pending → in_production → completed) or manually cancelled
+2. **Order Item Status**: pending → in_production → completed (managed by users)
 3. **Supplier Status**: awaiting_order → order_made → order_arrived → order_delivered
 4. **Payment Status**: unpaid → partial → paid
 
@@ -332,6 +344,7 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 '/orders/{id}/update' => 'OrderController@update' // Update order
 '/orders/{id}/delete' => 'OrderController@delete' // Delete order (admin)
 '/orders/{id}/update-status' => 'OrderController@updateStatus' // Update payment status
+'/orders/{id}/cancel' => 'OrderController@cancelOrder'          // Cancel order (manual override)
 
 // Customer Management
 '/customers' => 'CustomerController@index'         // List all customers
@@ -424,7 +437,8 @@ $order->getOrderItems();              // Get associated order items
 $order->getCustomer();                // Get customer record
 $order->getUser();                    // Get user who created order
 $order->updatePaymentStatus($status);
-$order->updateOrderStatus($status);
+$order->updateOrderStatus($status);   // Manual override (use for cancel only)
+$order->syncStatusFromItems();        // Auto-sync order status from item statuses
 $order->calculateTotal();             // Recalculate total from all order items
 $order->isOverdue();                  // Check if past due date
 $order->isDueSoon();                  // Check if due within 3 days
@@ -489,6 +503,11 @@ $this->isGet();                      // Check if GET request
 ## Business Domain Rules
 
 ### Order Management
+- **Order Status Synchronization** (NEW):
+  - Order status is **automatically determined** from item statuses
+  - No manual order status changes allowed (except cancellation)
+  - Status updates when any item status changes
+  - Cancelled orders stop auto-sync (manual override)
 - **Rush orders**: Automatically flagged when due date is within 7 days
 - **Overdue**: Orders past due date with payment not completed
 - **Due Soon**: Orders due within 3 days

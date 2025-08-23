@@ -157,14 +157,22 @@ include dirname(__DIR__) . '/layouts/header.php';
                         </div>
                         
                         <div class="col-md-4 mb-3">
-                            <label for="order_status" class="form-label">Order Status</label>
-                            <select class="form-select" id="order_status" name="order_status">
-                                <?php $selectedStatus = $old_input['order_status'] ?? $order->order_status ?? 'pending'; ?>
-                                <option value="pending" <?= $selectedStatus === 'pending' ? 'selected' : '' ?>>Pending</option>
-                                <option value="in_production" <?= $selectedStatus === 'in_production' ? 'selected' : '' ?>>In Production</option>
-                                <option value="completed" <?= $selectedStatus === 'completed' ? 'selected' : '' ?>>Completed</option>
-                                <option value="cancelled" <?= $selectedStatus === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
-                            </select>
+                            <label class="form-label">Order Status</label>
+                            <?php if (isset($order->order_id)): ?>
+                                <div class="form-control-plaintext">
+                                    <?= $order->getOrderStatusBadge() ?>
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="bi bi-info-circle"></i> Automatically determined by item statuses
+                                    </small>
+                                </div>
+                            <?php else: ?>
+                                <div class="form-control-plaintext">
+                                    <span class="badge badge-warning">Pending</span>
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="bi bi-info-circle"></i> Will update automatically based on items
+                                    </small>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         
                         <div class="col-md-4 mb-3">

@@ -145,7 +145,8 @@ class OrderController extends Controller
         // Set order_total to 0.00 for new orders (will be calculated from items)
         $data['order_total'] = 0.00;
         $data['user_id'] = $_SESSION['user_id'];
-        $data['order_status'] = $data['order_status'] ?? 'pending';
+        // Order status is always pending for new orders (will sync from items)
+        $data['order_status'] = 'pending';
         $data['payment_status'] = $data['payment_status'] ?? 'unpaid';
         $data['date_created'] = date('Y-m-d H:i:s');
         
@@ -242,10 +243,10 @@ class OrderController extends Controller
         // Don't allow manual order_total updates - it's calculated from items
         unset($data['order_total']);
         
-        // Keep existing order status and payment status if not changed
-        if (!isset($data['order_status'])) {
-            $data['order_status'] = $orderData->order_status;
-        }
+        // Don't allow manual order_status updates - it's synced from items
+        unset($data['order_status']);
+        
+        // Keep existing payment status if not changed
         if (!isset($data['payment_status'])) {
             $data['payment_status'] = $orderData->payment_status;
         }
@@ -302,6 +303,32 @@ class OrderController extends Controller
             $_SESSION['success'] = 'Payment status updated successfully!';
         } else {
             $_SESSION['error'] = 'Failed to update payment status.';
+        }
+        
+        $this->redirect('/orders/' . $id);
+    }
+    
+    public function cancelOrder($id)
+    {
+        $this->requireAuth();
+        $this->verifyCsrf();
+        
+        if (!$this->isPost()) {
+            $this->redirect('/orders/' . $id);
+        }
+        
+        $order = new Order();
+        $orderData = $order->find($id);
+        
+        if (!$orderData) {
+            $this->redirect('/orders');
+        }
+        
+        // Cancel the order (manual override)
+        if ($orderData->updateOrderStatus('cancelled')) {
+            $_SESSION['success'] = 'Order has been cancelled.';
+        } else {
+            $_SESSION['error'] = 'Failed to cancel order.';
         }
         
         $this->redirect('/orders/' . $id);

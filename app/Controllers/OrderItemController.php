@@ -111,6 +111,9 @@ class OrderItemController extends Controller
             // Update order total
             $orderData->calculateTotal();
             
+            // Sync order status from items
+            $orderData->syncStatusFromItems();
+            
             $_SESSION['success'] = 'Order item added successfully!';
             $this->redirect('/orders/' . $order_id . '/order-items');
         } else {
@@ -192,6 +195,9 @@ class OrderItemController extends Controller
             $order = $itemData->getOrder();
             $order->calculateTotal();
             
+            // Sync order status from items
+            $order->syncStatusFromItems();
+            
             $_SESSION['success'] = 'Order item updated successfully!';
             $this->redirect('/orders/' . $itemData->order_id . '/order-items');
         } else {
@@ -220,6 +226,8 @@ class OrderItemController extends Controller
             $orderData = $order->find($order_id);
             if ($orderData) {
                 $orderData->calculateTotal();
+                // Sync order status from items
+                $orderData->syncStatusFromItems();
             }
             
             $_SESSION['success'] = 'Order item deleted successfully!';
@@ -266,6 +274,15 @@ class OrderItemController extends Controller
         }
         
         if ($success) {
+            // Sync order status if item status was updated
+            if ($statusType === 'order_item_status') {
+                $order = new Order();
+                $orderData = $order->find($itemData->order_id);
+                if ($orderData) {
+                    $orderData->syncStatusFromItems();
+                }
+            }
+            
             $this->json([
                 'success' => true,
                 'message' => 'Status updated successfully',

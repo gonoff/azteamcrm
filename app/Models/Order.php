@@ -43,6 +43,60 @@ class Order extends Model
         return $this->update();
     }
     
+    public function syncStatusFromItems()
+    {
+        // Don't auto-sync if order is manually overridden
+        if (in_array($this->order_status, ['cancelled', 'on_hold'])) {
+            return true;
+        }
+        
+        // Get all order items
+        $orderItems = $this->getOrderItems();
+        
+        if (empty($orderItems)) {
+            $this->order_status = 'pending';
+            $this->attributes['order_status'] = 'pending';
+            return $this->update();
+        }
+        
+        $allCompleted = true;
+        $anyInProduction = false;
+        $allCancelled = true;
+        
+        foreach ($orderItems as $item) {
+            if ($item->order_item_status !== 'cancelled') {
+                $allCancelled = false;
+            }
+            
+            if ($item->order_item_status !== 'completed' && $item->order_item_status !== 'cancelled') {
+                $allCompleted = false;
+                if ($item->order_item_status === 'in_production') {
+                    $anyInProduction = true;
+                }
+            }
+        }
+        
+        // Determine order status based on items
+        if ($allCancelled) {
+            $newStatus = 'cancelled';
+        } elseif ($allCompleted) {
+            $newStatus = 'completed';
+        } elseif ($anyInProduction) {
+            $newStatus = 'in_production';
+        } else {
+            $newStatus = 'pending';
+        }
+        
+        // Update if changed
+        if ($this->order_status !== $newStatus) {
+            $this->order_status = $newStatus;
+            $this->attributes['order_status'] = $newStatus;
+            return $this->update();
+        }
+        
+        return true;
+    }
+    
     public function calculateTotal()
     {
         $sql = "SELECT SUM(total_price) as total FROM order_items WHERE order_id = :order_id";
