@@ -196,7 +196,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="POST" action="/azteamcrm/customers/<?= $customer->customer_id ?>/delete" style="display: inline;">
+                <form method="POST" action="/azteamcrm/customers/<?= $customer->customer_id ?>/delete" class="form-inline">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <button type="submit" class="btn btn-danger">
                         <i class="bi bi-trash"></i> Delete Customer

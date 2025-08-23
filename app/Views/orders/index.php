@@ -140,7 +140,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteOrderForm" method="POST" style="display: inline;">
+                <form id="deleteOrderForm" method="POST" class="form-inline">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <button type="submit" class="btn btn-danger">Delete Order</button>
                 </form>

@@ -129,7 +129,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteUserForm" method="POST" style="display: inline;">
+                <form id="deleteUserForm" method="POST" class="form-inline">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <button type="submit" class="btn btn-danger">Deactivate User</button>
                 </form>
@@ -183,8 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Show success message
                     const alert = document.createElement('div');
-                    alert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-                    alert.style.zIndex = '9999';
+                    alert.className = 'alert alert-success alert-dismissible fade show alert-fixed-top';
                     alert.innerHTML = `
                         ${data.message}
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

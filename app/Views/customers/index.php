@@ -68,7 +68,7 @@
                                     </a>
                                     <?php if ($_SESSION['user_role'] === 'administrator' && $customer->getTotalOrders() == 0): ?>
                                     <form method="POST" action="/azteamcrm/customers/<?= $customer->customer_id ?>/delete" 
-                                          style="display: inline;" 
+                                          class="form-inline" 
                                           onsubmit="return confirm('Are you sure you want to delete this customer?');">
                                         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                                         <button type="submit" class="btn btn-sm btn-danger" title="Delete">

@@ -196,7 +196,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteForm" method="POST" style="display: inline;">
+                <form id="deleteForm" method="POST" class="form-inline">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </form>
@@ -206,7 +206,7 @@
 </div>
 
 <!-- Status Update Form (hidden) -->
-<form id="statusUpdateForm" method="POST" style="display: none;">
+<form id="statusUpdateForm" method="POST" class="form-hidden">
     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
     <input type="hidden" name="status_type" id="statusType">
     <input type="hidden" name="status_value" id="statusValue">

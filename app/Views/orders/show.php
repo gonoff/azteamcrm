@@ -212,7 +212,7 @@
                         </select>
                     </div>
                     
-                    <div class="mb-3" id="paidAmountGroup" style="display: none;">
+                    <div class="mb-3 d-none" id="paidAmountGroup">
                         <label for="paid_amount" class="form-label">Amount Paid</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
@@ -291,7 +291,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/delete" style="display: inline;">
+                <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/delete" class="form-inline">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <button type="submit" class="btn btn-danger">Delete Order</button>
                 </form>
@@ -309,15 +309,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     paymentStatusSelect.addEventListener('change', function() {
         if (this.value === 'partial') {
-            paidAmountGroup.style.display = 'block';
+            paidAmountGroup.classList.remove('d-none');
         } else {
-            paidAmountGroup.style.display = 'none';
+            paidAmountGroup.classList.add('d-none');
         }
     });
     
     // Trigger change event on page load to set initial state
     if (paymentStatusSelect.value === 'partial') {
-        paidAmountGroup.style.display = 'block';
+        paidAmountGroup.classList.remove('d-none');
     }
 });
 </script>

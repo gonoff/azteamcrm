@@ -51,11 +51,10 @@ include dirname(__DIR__) . '/layouts/header.php';
                             <!-- Search input for customer selection -->
                             <div class="position-relative">
                                 <input type="text" 
-                                       class="form-control <?= isset($errors['customer_id']) ? 'is-invalid' : '' ?>" 
+                                       class="form-control <?= isset($errors['customer_id']) ? 'is-invalid' : '' ?> <?= (isset($selected_customer) && $selected_customer) || (isset($displayCustomer) && $displayCustomer) ? 'd-none' : '' ?>" 
                                        id="customer_search" 
                                        placeholder="Type to search customers by name, company, or phone..."
-                                       autocomplete="off"
-                                       style="<?= (isset($selected_customer) && $selected_customer) || (isset($displayCustomer) && $displayCustomer) ? 'display: none;' : '' ?>">
+                                       autocomplete="off">
                                 
                                 <!-- Loading spinner -->
                                 <div class="position-absolute top-50 end-0 translate-middle-y me-3 d-none" id="search_spinner">
@@ -65,7 +64,7 @@ include dirname(__DIR__) . '/layouts/header.php';
                                 </div>
                                 
                                 <!-- Search results dropdown -->
-                                <div class="dropdown-menu w-100 shadow" id="customer_results" style="max-height: 300px; overflow-y: auto;">
+                                <div class="dropdown-menu w-100 shadow dropdown-scrollable" id="customer_results">
                                     <!-- Results will be populated here -->
                                 </div>
                             </div>
@@ -185,11 +184,10 @@ include dirname(__DIR__) . '/layouts/header.php';
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="text" 
-                                       class="form-control" 
+                                       class="form-control form-control-readonly" 
                                        id="order_total" 
                                        value="<?= number_format($order->order_total ?? 0.00, 2) ?>" 
-                                       readonly
-                                       style="background-color: #f8f9fa;">
+                                       readonly>
                             </div>
                             <small class="text-muted">
                                 <?php if ($order): ?>
@@ -265,7 +263,7 @@ function initCustomerSearch() {
     if (customerIdInput.value && selectedCustomerDiv.querySelector('.alert')) {
         console.log('Customer pre-selected with ID:', customerIdInput.value);
         // Ensure search input stays hidden
-        searchInput.style.display = 'none';
+        searchInput.classList.add('d-none');
     }
     
     // No observers needed - hidden input is the source of truth
@@ -448,7 +446,7 @@ function clearCustomerSelection() {
     // No localStorage to clear
     
     // Show search input again
-    searchInput.style.display = 'block';
+    searchInput.classList.remove('d-none');
     searchInput.value = '';
     searchInput.focus();
 }
@@ -497,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Also hide the search input if it's visible
             const searchInput = document.getElementById('customer_search');
             if (searchInput) {
-                searchInput.style.display = 'none';
+                searchInput.classList.add('d-none');
             }
         }
     }
@@ -540,7 +538,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Focus on customer search
                 const searchInput = document.getElementById('customer_search');
-                if (searchInput.style.display !== 'none') {
+                if (!searchInput.classList.contains('d-none')) {
                     searchInput.focus();
                 }
                 
