@@ -271,4 +271,51 @@ class CustomerController extends Controller
             $this->json(['success' => false, 'message' => 'Failed to update status']);
         }
     }
+    
+    public function search()
+    {
+        // Verify CSRF token for security
+        $this->verifyCsrf();
+        
+        // Get search query from request
+        $query = $this->sanitize($_POST['query'] ?? '');
+        
+        // Validate query (minimum 2 characters)
+        if (strlen($query) < 2) {
+            $this->json([
+                'success' => false,
+                'message' => 'Please enter at least 2 characters to search',
+                'results' => []
+            ]);
+            return;
+        }
+        
+        // Search for customers
+        $customer = new Customer();
+        $results = $customer->searchCustomers($query);
+        
+        // Format results for response
+        $formattedResults = [];
+        foreach ($results as $result) {
+            $displayName = $result->full_name;
+            if ($result->company_name) {
+                $displayName .= ' (' . $result->company_name . ')';
+            }
+            
+            $formattedResults[] = [
+                'customer_id' => $result->customer_id,
+                'full_name' => $result->full_name,
+                'company_name' => $result->company_name,
+                'phone_number' => $result->formatPhoneNumber(),
+                'display_name' => $displayName
+            ];
+        }
+        
+        // Return JSON response
+        $this->json([
+            'success' => true,
+            'results' => $formattedResults,
+            'count' => count($formattedResults)
+        ]);
+    }
 }

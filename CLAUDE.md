@@ -145,7 +145,12 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 #### Order Management Module
 - Complete CRUD operations for orders
 - Order listing with real-time search
-- Create new orders with customer selection (not inline client data)
+- Create new orders with searchable customer selection
+  - AJAX-powered customer search with autocomplete
+  - Search by name, company, or phone number
+  - Keyboard navigation support (arrow keys, enter, escape)
+  - Visual feedback with loading spinner
+  - Selected customer display with change option
 - Edit existing orders
 - Delete orders (admin only)
 - View detailed order information with customer links
@@ -203,7 +208,10 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 - Supplier status tracking (separate from item status)
 - Special notes per item (note_item field)
 - Quantity tracking with price calculations
-- Visual status badges
+- Visual status badges with dropdown menus for status updates
+- AJAX-based status updates without page reload
+- Dynamic badge refresh after status changes
+- Automatic order total recalculation when items change
 - Cascade deletion with orders
 
 ### 🔴 Pending Implementation
@@ -311,6 +319,7 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 
 // Customer Management
 '/customers' => 'CustomerController@index'         // List all customers
+'/customers/search' => 'CustomerController@search' // AJAX search endpoint
 '/customers/create' => 'CustomerController@create' // New customer form
 '/customers/store' => 'CustomerController@store'   // Save new customer
 '/customers/{id}' => 'CustomerController@show'     // View customer details
@@ -345,6 +354,15 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 4. Model performs database operations with prepared statements
 5. View renders HTML with Bootstrap components
 
+### Model Update Pattern
+When updating model properties that need to be saved to database:
+```php
+// IMPORTANT: Set both attributes array AND object property
+$this->attributes['field_name'] = $value;  // For database persistence
+$this->field_name = $value;                // For immediate access
+return $this->update();                     // Save to database
+```
+
 ### URL Pattern Rules
 - **HTML forms and links** (`action=` and `href=`): Use full path with `/azteamcrm/` prefix
   - Example: `action="/azteamcrm/customers/store"`, `href="/azteamcrm/orders/create"`
@@ -376,6 +394,7 @@ $order->getCustomer();                // Get customer record
 $order->getUser();                    // Get user who created order
 $order->updatePaymentStatus($status);
 $order->updateOrderStatus($status);
+$order->calculateTotal();             // Recalculate total from all order items
 $order->isOverdue();                  // Check if past due date
 $order->isDueSoon();                  // Check if due within 3 days
 $order->isRushOrder();                // Check if due within 7 days
@@ -394,17 +413,19 @@ $customer->getTotalOrders();          // Count of orders
 $customer->getTotalRevenue();         // Sum of order totals
 $customer->getStatusBadge();          // HTML badge for status
 $customer->formatPhoneNumber();       // Format phone for display
+$customer->searchCustomers($query, $limit = 20); // Search customers by name/company/phone
 
 // OrderItem model specifics:
 $orderItem->getOrder();               // Get parent order
 $orderItem->getUser();                // Get user who created item
-$orderItem->updateStatus($status);    // Update item status
-$orderItem->updateSupplierStatus($status);
+$orderItem->updateStatus($status);    // Update item status (sets both attributes and properties)
+$orderItem->updateSupplierStatus($status); // Update supplier status (sets both attributes and properties)
 $orderItem->getStatusBadge();         // HTML badge for item status
 $orderItem->getSupplierStatusBadge(); // HTML badge for supplier status
 $orderItem->getSizeLabel();           // Format size for display
 $orderItem->getCustomMethodLabel();   // Format method for display
 $orderItem->getProductTypeLabel();
+$orderItem->calculateTotalPrice();    // Returns quantity * unit_price
 
 // Boolean handling for MySQL:
 $model->field = $value ? 1 : 0;      // Convert to int for MySQL
@@ -440,7 +461,10 @@ $this->isGet();                      // Check if GET request
 - **Rush orders**: Automatically flagged when due date is within 7 days
 - **Overdue**: Orders past due date with payment not completed
 - **Due Soon**: Orders due within 3 days
-- **Order totals**: Fixed amount set at order creation
+- **Order totals**: Automatically calculated from order items (quantity × unit_price)
+  - New orders start with total = 0.00
+  - Total recalculated whenever items are added/updated/deleted
+  - Order total field is read-only in forms
 - **Payment status**: Tracks unpaid/partial/paid status
 - Orders link to customers via foreign key
 - Orders can contain multiple order items with individual pricing
@@ -513,6 +537,23 @@ $this->isGet();                      // Check if GET request
 5. Handle session messages (success/error)
 6. Add client-side validation where appropriate
 
+### Implementing AJAX Search Features
+1. Create search endpoint in controller with CSRF verification
+2. Add search method to model using `$this->db->getConnection()->prepare()`
+3. Implement JavaScript with:
+   - Debouncing (300ms recommended)
+   - Loading indicators
+   - Keyboard navigation
+   - Error handling
+4. Use fetch API with proper headers:
+   ```javascript
+   fetch('/azteamcrm/endpoint', {
+       method: 'POST',
+       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+       body: `csrf_token=<?= $csrf_token ?>&param=${value}`
+   })
+   ```
+
 ### Working with Models
 1. Create model in `/app/Models/`
 2. Extend `App\Core\Model`
@@ -539,6 +580,10 @@ $this->isGet();                      // Check if GET request
 - **Customer creation flow**: Implemented return URL mechanism for seamless order-to-customer-to-order workflow
 - **CSRF token validation on delete**: Pass csrf_token to views and use consistent variable names
 - **404 on delete/form actions**: Form actions and links in views must use full `/azteamcrm/` prefix, while controller redirects use relative paths
+- **Order total before items**: Order total is now auto-calculated from items, no longer required at order creation
+- **Status updates not saving**: Model update methods must set both `$this->attributes[]` array AND object properties
+- **AJAX status update errors**: Use fetch API instead of form submission for dynamic updates without page reload
+- **Database prepare() method not found**: Use `$this->db->getConnection()->prepare()` for prepared statements in models
 
 ### Debugging
 ```php

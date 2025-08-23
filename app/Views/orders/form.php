@@ -29,32 +29,80 @@
                     
                     <div class="row">
                         <div class="col-md-8 mb-3">
-                            <label for="customer_id" class="form-label">Customer <span class="text-danger">*</span></label>
-                            <select class="form-select <?= isset($errors['customer_id']) ? 'is-invalid' : '' ?>" 
-                                    id="customer_id" 
-                                    name="customer_id" 
-                                    required>
-                                <option value="">Select a customer...</option>
-                                <?php foreach ($customers as $customer): ?>
-                                    <?php 
-                                    // Check if this customer should be selected
-                                    $isSelected = false;
-                                    if (isset($selected_customer_id) && $selected_customer_id == $customer->customer_id) {
-                                        $isSelected = true;
-                                    } elseif (($_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '') == $customer->customer_id) {
-                                        $isSelected = true;
+                            <label for="customer_search" class="form-label">Customer <span class="text-danger">*</span></label>
+                            
+                            <!-- Hidden input to store selected customer ID -->
+                            <input type="hidden" 
+                                   id="customer_id" 
+                                   name="customer_id" 
+                                   value="<?= $_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '' ?>"
+                                   required>
+                            
+                            <!-- Search input for customer selection -->
+                            <div class="position-relative">
+                                <input type="text" 
+                                       class="form-control <?= isset($errors['customer_id']) ? 'is-invalid' : '' ?>" 
+                                       id="customer_search" 
+                                       placeholder="Type to search customers by name, company, or phone..."
+                                       autocomplete="off">
+                                
+                                <!-- Loading spinner -->
+                                <div class="position-absolute top-50 end-0 translate-middle-y me-3 d-none" id="search_spinner">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Searching...</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Search results dropdown -->
+                                <div class="dropdown-menu w-100 shadow" id="customer_results" style="max-height: 300px; overflow-y: auto;">
+                                    <!-- Results will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Selected customer display -->
+                            <div id="selected_customer" class="mt-2">
+                                <?php 
+                                // Check if we have a pre-selected customer
+                                $selectedCustomerId = null;
+                                $selectedCustomer = null;
+                                
+                                if (isset($selected_customer_id)) {
+                                    $selectedCustomerId = $selected_customer_id;
+                                } elseif ($_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '') {
+                                    $selectedCustomerId = $_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '';
+                                }
+                                
+                                if ($selectedCustomerId) {
+                                    // Find the selected customer from the list
+                                    foreach ($customers as $customer) {
+                                        if ($customer->customer_id == $selectedCustomerId) {
+                                            $selectedCustomer = $customer;
+                                            break;
+                                        }
                                     }
-                                    ?>
-                                    <option value="<?= $customer->customer_id ?>" <?= $isSelected ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($customer->full_name) ?>
-                                        <?php if ($customer->company_name): ?>
-                                            (<?= htmlspecialchars($customer->company_name) ?>)
-                                        <?php endif; ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                                }
+                                
+                                if ($selectedCustomer): 
+                                ?>
+                                    <div class="alert alert-info d-flex justify-content-between align-items-center py-2">
+                                        <div>
+                                            <strong><?= htmlspecialchars($selectedCustomer->full_name) ?></strong>
+                                            <?php if ($selectedCustomer->company_name): ?>
+                                                <br><small><?= htmlspecialchars($selectedCustomer->company_name) ?></small>
+                                            <?php endif; ?>
+                                            <?php if ($selectedCustomer->phone_number): ?>
+                                                <br><small><?= $selectedCustomer->formatPhoneNumber() ?></small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearCustomerSelection()">
+                                            <i class="bi bi-x"></i> Change
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            
                             <?php if (isset($errors['customer_id'])): ?>
-                                <div class="invalid-feedback"><?= htmlspecialchars($errors['customer_id']) ?></div>
+                                <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['customer_id']) ?></div>
                             <?php endif; ?>
                         </div>
                         
@@ -178,47 +226,217 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Calculate if order is rush based on due date
-    const dueDateInput = document.getElementById('due_date');
-    const rushOrderCheckbox = document.getElementById('is_rush_order');
+// Customer search functionality
+let searchTimeout;
+let currentFocus = -1;
+
+function initCustomerSearch() {
+    const searchInput = document.getElementById('customer_search');
+    const resultsDropdown = document.getElementById('customer_results');
+    const spinner = document.getElementById('search_spinner');
+    const customerIdInput = document.getElementById('customer_id');
+    const selectedCustomerDiv = document.getElementById('selected_customer');
     
-    dueDateInput.addEventListener('change', function() {
-        const dueDate = new Date(this.value);
-        const today = new Date();
-        const diffTime = Math.abs(dueDate - today);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // Check if customer is already selected on page load
+    if (customerIdInput.value && selectedCustomerDiv.querySelector('.alert')) {
+        searchInput.style.display = 'none';
+    }
+    
+    // Handle search input
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
         
-        // Auto-check rush order if due within 7 days
-        if (diffDays <= 7 && !rushOrderCheckbox.checked) {
-            rushOrderCheckbox.checked = true;
-            // Show alert
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-warning alert-dismissible fade show mt-2';
-            alert.innerHTML = `
-                <i class="bi bi-exclamation-triangle"></i> 
-                This order has been automatically marked as RUSH (due within 7 days).
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            dueDateInput.parentElement.appendChild(alert);
+        if (query.length < 2) {
+            resultsDropdown.classList.remove('show');
+            return;
+        }
+        
+        // Show spinner
+        spinner.classList.remove('d-none');
+        
+        // Debounce search
+        searchTimeout = setTimeout(() => {
+            searchCustomers(query);
+        }, 300);
+    });
+    
+    // Handle keyboard navigation
+    searchInput.addEventListener('keydown', function(e) {
+        const items = resultsDropdown.querySelectorAll('.dropdown-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentFocus++;
+            addActive(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentFocus--;
+            addActive(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentFocus > -1 && items[currentFocus]) {
+                items[currentFocus].click();
+            }
+        } else if (e.key === 'Escape') {
+            resultsDropdown.classList.remove('show');
+            currentFocus = -1;
         }
     });
     
-    // Format phone number as user types
-    const phoneInput = document.getElementById('client_phone');
-    phoneInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 0) {
-            if (value.length <= 3) {
-                value = `(${value}`;
-            } else if (value.length <= 6) {
-                value = `(${value.slice(0, 3)}) ${value.slice(3)}`;
-            } else {
-                value = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`;
-            }
+    // Click outside to close dropdown
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
+            resultsDropdown.classList.remove('show');
         }
-        e.target.value = value;
     });
+}
+
+function searchCustomers(query) {
+    const resultsDropdown = document.getElementById('customer_results');
+    const spinner = document.getElementById('search_spinner');
+    
+    fetch('/azteamcrm/customers/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `csrf_token=<?= $csrf_token ?>&query=${encodeURIComponent(query)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        spinner.classList.add('d-none');
+        
+        if (data.success && data.results.length > 0) {
+            displayResults(data.results);
+        } else if (data.results.length === 0) {
+            resultsDropdown.innerHTML = `
+                <div class="dropdown-item-text text-muted">
+                    <i class="bi bi-info-circle"></i> No customers found
+                </div>
+            `;
+            resultsDropdown.classList.add('show');
+        }
+    })
+    .catch(error => {
+        console.error('Search error:', error);
+        spinner.classList.add('d-none');
+        resultsDropdown.innerHTML = `
+            <div class="dropdown-item-text text-danger">
+                <i class="bi bi-exclamation-triangle"></i> Search failed. Please try again.
+            </div>
+        `;
+        resultsDropdown.classList.add('show');
+    });
+}
+
+function displayResults(results) {
+    const resultsDropdown = document.getElementById('customer_results');
+    currentFocus = -1;
+    
+    let html = '';
+    results.forEach(customer => {
+        html += `
+            <a href="#" class="dropdown-item py-2" onclick="selectCustomer(${customer.customer_id}, '${escapeHtml(customer.full_name)}', '${escapeHtml(customer.company_name || '')}', '${escapeHtml(customer.phone_number || '')}'); return false;">
+                <div>
+                    <strong>${escapeHtml(customer.full_name)}</strong>
+                    ${customer.company_name ? `<br><small class="text-muted">${escapeHtml(customer.company_name)}</small>` : ''}
+                    ${customer.phone_number ? `<br><small class="text-muted">${escapeHtml(customer.phone_number)}</small>` : ''}
+                </div>
+            </a>
+        `;
+    });
+    
+    resultsDropdown.innerHTML = html;
+    resultsDropdown.classList.add('show');
+}
+
+function selectCustomer(customerId, fullName, companyName, phoneNumber) {
+    const searchInput = document.getElementById('customer_search');
+    const customerIdInput = document.getElementById('customer_id');
+    const selectedCustomerDiv = document.getElementById('selected_customer');
+    const resultsDropdown = document.getElementById('customer_results');
+    
+    // Set the customer ID
+    customerIdInput.value = customerId;
+    
+    // Hide search input and show selected customer
+    searchInput.style.display = 'none';
+    searchInput.value = '';
+    resultsDropdown.classList.remove('show');
+    
+    // Display selected customer
+    let customerHtml = `
+        <div class="alert alert-info d-flex justify-content-between align-items-center py-2">
+            <div>
+                <strong>${escapeHtml(fullName)}</strong>
+    `;
+    
+    if (companyName) {
+        customerHtml += `<br><small>${escapeHtml(companyName)}</small>`;
+    }
+    if (phoneNumber) {
+        customerHtml += `<br><small>${escapeHtml(phoneNumber)}</small>`;
+    }
+    
+    customerHtml += `
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearCustomerSelection()">
+                <i class="bi bi-x"></i> Change
+            </button>
+        </div>
+    `;
+    
+    selectedCustomerDiv.innerHTML = customerHtml;
+    
+    // Remove invalid feedback if it exists
+    const invalidFeedback = document.querySelector('.invalid-feedback.d-block');
+    if (invalidFeedback) {
+        invalidFeedback.classList.remove('d-block');
+    }
+}
+
+function clearCustomerSelection() {
+    const searchInput = document.getElementById('customer_search');
+    const customerIdInput = document.getElementById('customer_id');
+    const selectedCustomerDiv = document.getElementById('selected_customer');
+    
+    // Clear selection
+    customerIdInput.value = '';
+    selectedCustomerDiv.innerHTML = '';
+    
+    // Show search input again
+    searchInput.style.display = 'block';
+    searchInput.focus();
+}
+
+function addActive(items) {
+    if (!items) return false;
+    removeActive(items);
+    
+    if (currentFocus >= items.length) currentFocus = 0;
+    if (currentFocus < 0) currentFocus = items.length - 1;
+    
+    if (items[currentFocus]) {
+        items[currentFocus].classList.add('active');
+    }
+}
+
+function removeActive(items) {
+    for (let item of items) {
+        item.classList.remove('active');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize customer search
+    initCustomerSearch();
     
     // Clear old input from session
     <?php unset($_SESSION['old_input'], $_SESSION['errors']); ?>

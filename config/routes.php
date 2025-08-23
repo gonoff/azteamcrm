@@ -12,6 +12,7 @@ return [
     
     // Customers
     '/customers' => 'CustomerController@index',
+    '/customers/search' => 'CustomerController@search',
     '/customers/create' => 'CustomerController@create',
     '/customers/store' => 'CustomerController@store',
     '/customers/{id}' => 'CustomerController@show',

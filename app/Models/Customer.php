@@ -83,4 +83,48 @@ class Customer extends Model
         }
         return $this->phone_number;
     }
+    
+    public function searchCustomers($query, $limit = 20)
+    {
+        // Sanitize the query for use in LIKE statements
+        $searchTerm = '%' . $query . '%';
+        
+        // Remove non-numeric characters for phone search
+        $phoneSearch = preg_replace('/[^0-9]/', '', $query);
+        $phoneSearchTerm = '%' . $phoneSearch . '%';
+        
+        // Build the SQL query to search across multiple fields
+        $sql = "SELECT customer_id, full_name, company_name, phone_number, customer_status 
+                FROM {$this->table} 
+                WHERE customer_status = 'active' 
+                AND (
+                    full_name LIKE :name_search 
+                    OR company_name LIKE :company_search 
+                    OR phone_number LIKE :phone_search
+                )
+                ORDER BY 
+                    CASE 
+                        WHEN full_name LIKE :exact_match THEN 1
+                        WHEN company_name LIKE :exact_match_company THEN 2
+                        ELSE 3
+                    END,
+                    full_name ASC
+                LIMIT :limit";
+        
+        // Use the Database connection directly for prepared statements
+        $connection = $this->db->getConnection();
+        $stmt = $connection->prepare($sql);
+        $stmt->bindValue(':name_search', $searchTerm, \PDO::PARAM_STR);
+        $stmt->bindValue(':company_search', $searchTerm, \PDO::PARAM_STR);
+        $stmt->bindValue(':phone_search', $phoneSearchTerm, \PDO::PARAM_STR);
+        $stmt->bindValue(':exact_match', $query . '%', \PDO::PARAM_STR);
+        $stmt->bindValue(':exact_match_company', $query . '%', \PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        
+        if ($stmt->execute()) {
+            return $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+        }
+        
+        return [];
+    }
 }
