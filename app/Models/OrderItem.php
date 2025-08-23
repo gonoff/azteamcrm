@@ -29,12 +29,14 @@ class OrderItem extends Model
     
     public function updateStatus($status)
     {
+        $this->attributes['order_item_status'] = $status;
         $this->order_item_status = $status;
         return $this->update();
     }
     
     public function updateSupplierStatus($status)
     {
+        $this->attributes['supplier_status'] = $status;
         $this->supplier_status = $status;
         return $this->update();
     }

@@ -234,26 +234,33 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const itemId = this.dataset.id;
             const status = this.dataset.status;
+            const dropdownButton = this.closest('.dropdown').querySelector('button[data-bs-toggle="dropdown"]');
             
-            // Create and submit form
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/azteamcrm/order-items/' + itemId + '/update-status';
-            
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token';
-            csrfInput.value = '<?= $csrf_token ?>';
-            form.appendChild(csrfInput);
-            
-            const statusInput = document.createElement('input');
-            statusInput.type = 'hidden';
-            statusInput.name = 'supplier_status';
-            statusInput.value = status;
-            form.appendChild(statusInput);
-            
-            document.body.appendChild(form);
-            form.submit();
+            // Send AJAX request
+            fetch(`/azteamcrm/order-items/${itemId}/update-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `csrf_token=<?= $csrf_token ?>&status_type=supplier_status&status=${status}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the badge directly without reload
+                    if (dropdownButton && data.badge) {
+                        dropdownButton.innerHTML = data.badge;
+                    }
+                    // Show success message
+                    showAlert('success', data.message || 'Supplier status updated successfully');
+                } else {
+                    showAlert('danger', data.message || 'Failed to update supplier status');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('danger', 'An error occurred while updating status');
+            });
         });
     });
     
@@ -263,28 +270,55 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const itemId = this.dataset.id;
             const status = this.dataset.status;
+            const dropdownButton = this.closest('.dropdown').querySelector('button[data-bs-toggle="dropdown"]');
             
-            // Create and submit form
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/azteamcrm/order-items/' + itemId + '/update-status';
-            
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token';
-            csrfInput.value = '<?= $csrf_token ?>';
-            form.appendChild(csrfInput);
-            
-            const statusInput = document.createElement('input');
-            statusInput.type = 'hidden';
-            statusInput.name = 'order_item_status';
-            statusInput.value = status;
-            form.appendChild(statusInput);
-            
-            document.body.appendChild(form);
-            form.submit();
+            // Send AJAX request
+            fetch(`/azteamcrm/order-items/${itemId}/update-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `csrf_token=<?= $csrf_token ?>&status_type=order_item_status&status=${status}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the badge directly without reload
+                    if (dropdownButton && data.badge) {
+                        dropdownButton.innerHTML = data.badge;
+                    }
+                    // Show success message
+                    showAlert('success', data.message || 'Item status updated successfully');
+                    
+                    // If status changed to completed, update the progress counter
+                    if (status === 'completed') {
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                } else {
+                    showAlert('danger', data.message || 'Failed to update item status');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('danger', 'An error occurred while updating status');
+            });
         });
     });
+    
+    // Helper function to show alerts
+    function showAlert(type, message) {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        const alertContainer = document.querySelector('.alert');
+        if (alertContainer) {
+            alertContainer.remove();
+        }
+        document.querySelector('h1').insertAdjacentHTML('afterend', alertHtml);
+    }
 });
 </script>
 
