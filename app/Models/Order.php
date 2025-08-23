@@ -80,6 +80,17 @@ class Order extends Model
         return 0;
     }
     
+    public function getOutstandingBalance()
+    {
+        // Calculate outstanding balance for this specific order
+        if ($this->payment_status === 'paid') {
+            return 0;
+        }
+        // For unpaid or partial, return the full order total
+        // In future, when payments table is added, subtract payments from total
+        return floatval($this->order_total ?? 0);
+    }
+    
     public function countDueToday()
     {
         $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE date_due = CURDATE()";

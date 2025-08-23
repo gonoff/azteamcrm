@@ -64,7 +64,7 @@ class OrderItemController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
-            $this->redirect('/azteamcrm/orders/' . $order_id . '/order-items');
+            $this->redirect('/orders/' . $order_id . '/order-items');
         }
         
         $this->verifyCsrf();
@@ -73,7 +73,7 @@ class OrderItemController extends Controller
         $orderData = $order->find($order_id);
         
         if (!$orderData) {
-            $this->redirect('/azteamcrm/orders');
+            $this->redirect('/orders');
         }
         
         $data = $this->sanitize($_POST);
@@ -88,7 +88,7 @@ class OrderItemController extends Controller
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
-            $this->redirect('/azteamcrm/orders/' . $order_id . '/order-items/create');
+            $this->redirect('/orders/' . $order_id . '/order-items/create');
         }
         
         // Set required fields
@@ -112,10 +112,10 @@ class OrderItemController extends Controller
             $orderData->calculateTotal();
             
             $_SESSION['success'] = 'Order item added successfully!';
-            $this->redirect('/azteamcrm/orders/' . $order_id . '/order-items');
+            $this->redirect('/orders/' . $order_id . '/order-items');
         } else {
             $_SESSION['error'] = 'Failed to add order item.';
-            $this->redirect('/azteamcrm/orders/' . $order_id . '/order-items/create');
+            $this->redirect('/orders/' . $order_id . '/order-items/create');
         }
     }
     
@@ -150,7 +150,7 @@ class OrderItemController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
-            $this->redirect('/azteamcrm/orders');
+            $this->redirect('/orders');
         }
         
         $this->verifyCsrf();
@@ -159,7 +159,7 @@ class OrderItemController extends Controller
         $itemData = $orderItem->find($id);
         
         if (!$itemData) {
-            $this->redirect('/azteamcrm/orders');
+            $this->redirect('/orders');
         }
         
         $data = $this->sanitize($_POST);
@@ -174,7 +174,7 @@ class OrderItemController extends Controller
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
-            $this->redirect('/azteamcrm/order-items/' . $id . '/edit');
+            $this->redirect('/order-items/' . $id . '/edit');
         }
         
         // Handle optional fields
@@ -193,10 +193,10 @@ class OrderItemController extends Controller
             $order->calculateTotal();
             
             $_SESSION['success'] = 'Order item updated successfully!';
-            $this->redirect('/azteamcrm/orders/' . $itemData->order_id . '/order-items');
+            $this->redirect('/orders/' . $itemData->order_id . '/order-items');
         } else {
             $_SESSION['error'] = 'Failed to update order item.';
-            $this->redirect('/azteamcrm/order-items/' . $id . '/edit');
+            $this->redirect('/order-items/' . $id . '/edit');
         }
     }
     
@@ -209,7 +209,7 @@ class OrderItemController extends Controller
         $itemData = $orderItem->find($id);
         
         if (!$itemData) {
-            $this->redirect('/azteamcrm/orders');
+            $this->redirect('/orders');
         }
         
         $order_id = $itemData->order_id;
@@ -227,7 +227,7 @@ class OrderItemController extends Controller
             $_SESSION['error'] = 'Failed to delete order item.';
         }
         
-        $this->redirect('/azteamcrm/orders/' . $order_id . '/order-items');
+        $this->redirect('/orders/' . $order_id . '/order-items');
     }
     
     public function updateStatus($id)

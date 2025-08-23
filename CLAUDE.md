@@ -81,6 +81,11 @@ mysql -u root -p azteamerp < azteamerp.sql
 # Configure environment
 cp .env.example .env
 # Edit .env with your database credentials
+# Note: Default .env.example uses DB_DATABASE=azteamcrm, update to azteamerp
+
+# Reset database (if needed)
+/opt/lampp/bin/mysql -u root -p -e "DROP DATABASE IF EXISTS azteamerp; CREATE DATABASE azteamerp;"
+/opt/lampp/bin/mysql -u root -p azteamerp < azteamerp.sql
 ```
 
 ### XAMPP/LAMPP Management
@@ -183,6 +188,8 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 - Customer status (active/inactive)
 - Revenue and order statistics per customer
 - Relationship with orders via foreign key
+- Return URL mechanism for seamless workflow when creating customers from orders
+- Automatic customer selection after creation when returning to order form
 
 #### Order Item Management Module (formerly Line Items)
 - Full CRUD operations for order items within orders
@@ -271,50 +278,62 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 ### Active Routes
 ```php
 // Authentication
-'/login', '/logout'
+'/login' => 'AuthController@showLogin'
+'/login/submit' => 'AuthController@login'
+'/logout' => 'AuthController@logout'
 
 // Dashboard
-'/', '/dashboard'
+'/' => 'DashboardController@index'
+'/dashboard' => 'DashboardController@index'
 
 // User Management (Admin only)
-'/users', '/users/create', '/users/{id}/edit'
-'/users/{id}/update', '/users/{id}/delete'
-'/users/{id}/toggle-status'
+'/users' => 'UserController@index'
+'/users/create' => 'UserController@create'
+'/users/store' => 'UserController@store'
+'/users/{id}/edit' => 'UserController@edit'
+'/users/{id}/update' => 'UserController@update'
+'/users/{id}/delete' => 'UserController@delete'
+'/users/{id}/toggle-status' => 'UserController@toggleStatus'
 
 // Profile
-'/profile', '/profile/update-password'
+'/profile' => 'UserController@profile'
+'/profile/update-password' => 'UserController@updatePassword'
 
 // Order Management
-'/orders'                      // List all orders
-'/orders/create'              // New order form
-'/orders/store'               // Save new order
-'/orders/{id}'                // View order details
-'/orders/{id}/edit'           // Edit order form
-'/orders/{id}/update'         // Update order
-'/orders/{id}/delete'         // Delete order (admin)
-'/orders/{id}/update-status'  // Update payment status
+'/orders' => 'OrderController@index'              // List all orders
+'/orders/create' => 'OrderController@create'      // New order form
+'/orders/store' => 'OrderController@store'        // Save new order
+'/orders/{id}' => 'OrderController@show'          // View order details
+'/orders/{id}/edit' => 'OrderController@edit'     // Edit order form
+'/orders/{id}/update' => 'OrderController@update' // Update order
+'/orders/{id}/delete' => 'OrderController@delete' // Delete order (admin)
+'/orders/{id}/update-status' => 'OrderController@updateStatus' // Update payment status
 
 // Customer Management
-'/customers'                    // List all customers
-'/customers/create'            // New customer form
-'/customers/store'             // Save new customer
-'/customers/{id}'              // View customer details
-'/customers/{id}/edit'         // Edit customer form
-'/customers/{id}/update'       // Update customer
-'/customers/{id}/delete'       // Delete customer (admin)
+'/customers' => 'CustomerController@index'         // List all customers
+'/customers/create' => 'CustomerController@create' // New customer form
+'/customers/store' => 'CustomerController@store'   // Save new customer
+'/customers/{id}' => 'CustomerController@show'     // View customer details
+'/customers/{id}/edit' => 'CustomerController@edit' // Edit customer form
+'/customers/{id}/update' => 'CustomerController@update' // Update customer
+'/customers/{id}/delete' => 'CustomerController@delete' // Delete customer (admin)
+'/customers/{id}/toggle-status' => 'CustomerController@toggleStatus' // Toggle active status
 
 // Order Item Management (formerly Line Items)
-'/orders/{order_id}/order-items'       // List order items for order
-'/orders/{order_id}/order-items/create' // Add new order item
-'/orders/{order_id}/order-items/store'  // Save new order item
-'/order-items/{id}/edit'                // Edit order item
-'/order-items/{id}/update'              // Update order item
-'/order-items/{id}/delete'              // Delete order item
-'/order-items/{id}/update-status'       // Update status via AJAX
+'/orders/{order_id}/order-items' => 'OrderItemController@index'        // List order items
+'/orders/{order_id}/order-items/create' => 'OrderItemController@create' // Add new item
+'/orders/{order_id}/order-items/store' => 'OrderItemController@store'   // Save new item
+'/order-items/{id}/edit' => 'OrderItemController@edit'                  // Edit item
+'/order-items/{id}/update' => 'OrderItemController@update'              // Update item
+'/order-items/{id}/delete' => 'OrderItemController@delete'              // Delete item
+'/order-items/{id}/update-status' => 'OrderItemController@updateStatus' // Update status AJAX
 
-// Pending Implementation
-'/production'                     // Production dashboard
-'/reports'                        // Reporting module
+// Pending Implementation (currently commented in routes.php)
+// '/production' => 'ProductionController@index'           // Production dashboard
+// '/production/pending' => 'ProductionController@pending' // Pending items view
+// '/reports' => 'ReportController@index'                  // Reports dashboard
+// '/reports/financial' => 'ReportController@financial'    // Financial reports
+// '/reports/production' => 'ReportController@production'  // Production reports
 ```
 
 ## Key Architectural Patterns
@@ -325,6 +344,12 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 3. Controller method handles business logic and auth checks
 4. Model performs database operations with prepared statements
 5. View renders HTML with Bootstrap components
+
+### URL Pattern Rules
+- **HTML forms and links** (`action=` and `href=`): Use full path with `/azteamcrm/` prefix
+  - Example: `action="/azteamcrm/customers/store"`, `href="/azteamcrm/orders/create"`
+- **Controller redirects**: Use relative paths without `/azteamcrm/` prefix
+  - Example: `$this->redirect('/customers')` (the redirect() method adds the prefix automatically)
 
 ### Authentication Pattern
 ```php
@@ -356,6 +381,7 @@ $order->isDueSoon();                  // Check if due within 3 days
 $order->isRushOrder();                // Check if due within 7 days
 $order->getOrderStatusBadge();        // HTML badge for order status
 $order->getPaymentStatusBadge();      // HTML badge for payment status
+$order->getOutstandingBalance();      // Calculate outstanding balance for order
 
 // User model specifics:
 $user->authenticate($username, $password);
@@ -508,6 +534,11 @@ $this->isGet();                      // Check if GET request
 - **Cannot call constructor**: Remove `parent::__construct()` if parent class has no constructor
 - **Undefined session key**: Use `$_SESSION['user_role']` not `$_SESSION['role']`
 - **PHP Deprecation warnings**: Use model methods (getSizeLabel, getCustomMethodLabel) instead of str_replace on null fields
+- **Outstanding balance null error**: Use `$order->getOutstandingBalance()` method instead of accessing non-existent property
+- **404 on form submission**: Fixed redirect() method to prevent double base path (/azteamcrm//azteamcrm/...)
+- **Customer creation flow**: Implemented return URL mechanism for seamless order-to-customer-to-order workflow
+- **CSRF token validation on delete**: Pass csrf_token to views and use consistent variable names
+- **404 on delete/form actions**: Form actions and links in views must use full `/azteamcrm/` prefix, while controller redirects use relative paths
 
 ### Debugging
 ```php
@@ -555,3 +586,19 @@ Before marking a feature as complete:
 - [ ] Mobile responsive design is maintained
 - [ ] No PHP errors in Apache logs
 - [ ] Documentation is updated
+
+## Quick Reference
+
+### File Locations
+- **Controllers**: `/app/Controllers/`
+- **Models**: `/app/Models/`
+- **Views**: `/app/Views/`
+- **Core Framework**: `/app/Core/`
+- **Configuration**: `/config/`
+- **Public Assets**: `/public/`
+- **Storage**: `/storage/` (session files)
+- **Database Schema**: `/azteamerp.sql`
+- **Environment Config**: `/.env`
+
+### No Build Process Required
+This project uses CDN-hosted dependencies (Bootstrap, jQuery, DataTables) and requires no build tools like npm, composer, webpack, or gulp. All dependencies are loaded via CDN links in the views.

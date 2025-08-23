@@ -6,7 +6,9 @@
       "Bash(mv:*)",
       "Bash(mysql:*)",
       "Bash(curl:*)",
-      "Bash(/opt/lampp/bin/mysql:*)"
+      "Bash(/opt/lampp/bin/mysql:*)",
+      "Bash(grep:*)",
+      "Bash(/opt/lampp/bin/php:*)"
     ],
     "deny": [],
     "ask": []

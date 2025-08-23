@@ -62,11 +62,25 @@ class OrderController extends Controller
         $customer = new Customer();
         $customers = $customer->findAll(['customer_status' => 'active'], 'full_name ASC');
         
+        // Check if returning from customer creation with a new customer ID
+        $selectedCustomerId = null;
+        if (isset($_SESSION['new_customer_id'])) {
+            $selectedCustomerId = $_SESSION['new_customer_id'];
+            unset($_SESSION['new_customer_id']);
+        }
+        
+        // Restore form data if returning from customer creation
+        if (isset($_SESSION['order_form_data'])) {
+            $_SESSION['old_input'] = $_SESSION['order_form_data'];
+            unset($_SESSION['order_form_data']);
+        }
+        
         $this->view('orders/form', [
             'title' => 'Create Order',
             'csrf_token' => $this->csrf(),
             'order' => null,
-            'customers' => $customers
+            'customers' => $customers,
+            'selected_customer_id' => $selectedCustomerId
         ]);
     }
     
@@ -75,7 +89,7 @@ class OrderController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
-            $this->redirect('/azteamcrm/orders');
+            $this->redirect('/orders');
         }
         
         $this->verifyCsrf();
@@ -91,7 +105,7 @@ class OrderController extends Controller
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
-            $this->redirect('/azteamcrm/orders/create');
+            $this->redirect('/orders/create');
         }
         
         $data['user_id'] = $_SESSION['user_id'];
@@ -104,10 +118,10 @@ class OrderController extends Controller
         
         if ($newOrder) {
             $_SESSION['success'] = 'Order created successfully!';
-            $this->redirect('/azteamcrm/orders/' . $newOrder->order_id);
+            $this->redirect('/orders/' . $newOrder->order_id);
         } else {
             $_SESSION['error'] = 'Failed to create order.';
-            $this->redirect('/azteamcrm/orders/create');
+            $this->redirect('/orders/create');
         }
     }
     
@@ -127,11 +141,19 @@ class OrderController extends Controller
         $customer = new Customer();
         $customers = $customer->findAll(['customer_status' => 'active'], 'full_name ASC');
         
+        // Check if returning from customer creation with a new customer ID
+        $selectedCustomerId = null;
+        if (isset($_SESSION['new_customer_id'])) {
+            $selectedCustomerId = $_SESSION['new_customer_id'];
+            unset($_SESSION['new_customer_id']);
+        }
+        
         $this->view('orders/form', [
             'title' => 'Edit Order #' . $orderData->order_id,
             'csrf_token' => $this->csrf(),
             'order' => $orderData,
-            'customers' => $customers
+            'customers' => $customers,
+            'selected_customer_id' => $selectedCustomerId
         ]);
     }
     
@@ -140,7 +162,7 @@ class OrderController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
-            $this->redirect('/azteamcrm/orders');
+            $this->redirect('/orders');
         }
         
         $this->verifyCsrf();
@@ -149,7 +171,7 @@ class OrderController extends Controller
         $orderData = $order->find($id);
         
         if (!$orderData) {
-            $this->redirect('/azteamcrm/orders');
+            $this->redirect('/orders');
         }
         
         $data = $this->sanitize($_POST);
@@ -163,7 +185,7 @@ class OrderController extends Controller
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
-            $this->redirect('/azteamcrm/orders/' . $id . '/edit');
+            $this->redirect('/orders/' . $id . '/edit');
         }
         
         // Keep existing order status and payment status if not changed
@@ -178,10 +200,10 @@ class OrderController extends Controller
         
         if ($orderData->update()) {
             $_SESSION['success'] = 'Order updated successfully!';
-            $this->redirect('/azteamcrm/orders/' . $id);
+            $this->redirect('/orders/' . $id);
         } else {
             $_SESSION['error'] = 'Failed to update order.';
-            $this->redirect('/azteamcrm/orders/' . $id . '/edit');
+            $this->redirect('/orders/' . $id . '/edit');
         }
     }
     
@@ -199,7 +221,7 @@ class OrderController extends Controller
             $_SESSION['error'] = 'Failed to delete order.';
         }
         
-        $this->redirect('/azteamcrm/orders');
+        $this->redirect('/orders');
     }
     
     public function updateStatus($id)
@@ -207,7 +229,7 @@ class OrderController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
-            $this->redirect('/azteamcrm/orders/' . $id);
+            $this->redirect('/orders/' . $id);
         }
         
         $this->verifyCsrf();
@@ -216,7 +238,7 @@ class OrderController extends Controller
         $orderData = $order->find($id);
         
         if (!$orderData) {
-            $this->redirect('/azteamcrm/orders');
+            $this->redirect('/orders');
         }
         
         $status = $this->sanitize($_POST['payment_status'] ?? '');
@@ -228,6 +250,6 @@ class OrderController extends Controller
             $_SESSION['error'] = 'Failed to update payment status.';
         }
         
-        $this->redirect('/azteamcrm/orders/' . $id);
+        $this->redirect('/orders/' . $id);
     }
 }

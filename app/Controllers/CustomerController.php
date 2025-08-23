@@ -20,16 +20,29 @@ class CustomerController extends Controller
         
         $this->view('customers/index', [
             'customers' => $customers,
-            'title' => 'Customer Management'
+            'title' => 'Customer Management',
+            'csrf_token' => $this->csrf()
         ]);
     }
     
     public function create()
     {
+        // Check if there's a return URL passed
+        $returnUrl = $_GET['return_url'] ?? null;
+        
+        // Store current order form data if coming from order creation
+        if ($returnUrl && strpos($returnUrl, '/orders/create') !== false) {
+            // Preserve any order form data in session
+            if ($this->isPost()) {
+                $_SESSION['order_form_data'] = $_POST;
+            }
+        }
+        
         $this->view('customers/form', [
             'title' => 'Add New Customer',
             'customer' => null,
-            'action' => '/azteamcrm/customers/store'
+            'action' => '/azteamcrm/customers/store',
+            'return_url' => $returnUrl
         ]);
     }
     
@@ -61,7 +74,14 @@ class CustomerController extends Controller
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             $_SESSION['old'] = $data;
-            $this->redirect('/azteamcrm/customers/create');
+            
+            // Preserve return URL on validation error
+            $returnUrl = $_POST['return_url'] ?? null;
+            $redirectUrl = '/customers/create';
+            if ($returnUrl) {
+                $redirectUrl .= '?return_url=' . urlencode($returnUrl);
+            }
+            $this->redirect($redirectUrl);
             return;
         }
         
@@ -71,13 +91,32 @@ class CustomerController extends Controller
         }
         
         $customer = new Customer();
-        if ($customer->create($data)) {
+        $newCustomer = $customer->create($data);
+        if ($newCustomer) {
             $_SESSION['success'] = 'Customer created successfully.';
-            $this->redirect('/azteamcrm/customers');
+            
+            // Check if there's a return URL
+            $returnUrl = $_POST['return_url'] ?? null;
+            if ($returnUrl) {
+                // If returning to order creation, store the new customer ID
+                if (strpos($returnUrl, '/orders/create') !== false) {
+                    $_SESSION['new_customer_id'] = $newCustomer->customer_id;
+                }
+                $this->redirect($returnUrl);
+            } else {
+                $this->redirect('/customers');
+            }
         } else {
             $_SESSION['error'] = 'Failed to create customer.';
             $_SESSION['old'] = $data;
-            $this->redirect('/azteamcrm/customers/create');
+            
+            // Preserve return URL on error
+            $returnUrl = $_POST['return_url'] ?? null;
+            $redirectUrl = '/customers/create';
+            if ($returnUrl) {
+                $redirectUrl .= '?return_url=' . urlencode($returnUrl);
+            }
+            $this->redirect($redirectUrl);
         }
     }
     
@@ -88,7 +127,7 @@ class CustomerController extends Controller
         
         if (!$customer) {
             $_SESSION['error'] = 'Customer not found.';
-            $this->redirect('/azteamcrm/customers');
+            $this->redirect('/customers');
             return;
         }
         
@@ -97,7 +136,8 @@ class CustomerController extends Controller
         $this->view('customers/show', [
             'customer' => $customer,
             'orders' => $orders,
-            'title' => 'Customer Details'
+            'title' => 'Customer Details',
+            'csrf_token' => $this->csrf()
         ]);
     }
     
@@ -108,7 +148,7 @@ class CustomerController extends Controller
         
         if (!$customer) {
             $_SESSION['error'] = 'Customer not found.';
-            $this->redirect('/azteamcrm/customers');
+            $this->redirect('/customers');
             return;
         }
         
@@ -128,7 +168,7 @@ class CustomerController extends Controller
         
         if (!$customer) {
             $_SESSION['error'] = 'Customer not found.';
-            $this->redirect('/azteamcrm/customers');
+            $this->redirect('/customers');
             return;
         }
         
@@ -156,7 +196,7 @@ class CustomerController extends Controller
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             $_SESSION['old'] = $data;
-            $this->redirect('/azteamcrm/customers/' . $id . '/edit');
+            $this->redirect('/customers/' . $id . '/edit');
             return;
         }
         
@@ -168,11 +208,11 @@ class CustomerController extends Controller
         $customer->fill($data);
         if ($customer->update()) {
             $_SESSION['success'] = 'Customer updated successfully.';
-            $this->redirect('/azteamcrm/customers/' . $id);
+            $this->redirect('/customers/' . $id);
         } else {
             $_SESSION['error'] = 'Failed to update customer.';
             $_SESSION['old'] = $data;
-            $this->redirect('/azteamcrm/customers/' . $id . '/edit');
+            $this->redirect('/customers/' . $id . '/edit');
         }
     }
     
@@ -186,14 +226,14 @@ class CustomerController extends Controller
         
         if (!$customer) {
             $_SESSION['error'] = 'Customer not found.';
-            $this->redirect('/azteamcrm/customers');
+            $this->redirect('/customers');
             return;
         }
         
         // Check if customer has orders
         if ($customer->getTotalOrders() > 0) {
             $_SESSION['error'] = 'Cannot delete customer with existing orders.';
-            $this->redirect('/azteamcrm/customers');
+            $this->redirect('/customers');
             return;
         }
         
@@ -203,7 +243,7 @@ class CustomerController extends Controller
             $_SESSION['error'] = 'Failed to delete customer.';
         }
         
-        $this->redirect('/azteamcrm/customers');
+        $this->redirect('/customers');
     }
     
     public function toggleStatus($id)

@@ -30,6 +30,9 @@
 
                     <form method="POST" action="<?= $action ?>" class="needs-validation" novalidate>
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <?php if (isset($return_url) && $return_url): ?>
+                            <input type="hidden" name="return_url" value="<?= htmlspecialchars($return_url) ?>">
+                        <?php endif; ?>
                         
                         <!-- Personal/Company Information -->
                         <div class="row mb-3">
@@ -178,7 +181,10 @@
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-save"></i> <?= $customer ? 'Update' : 'Create' ?> Customer
                                 </button>
-                                <a href="/azteamcrm/customers" class="btn btn-secondary ms-2">
+                                <?php 
+                                $cancelUrl = isset($return_url) && $return_url ? htmlspecialchars($return_url) : '/azteamcrm/customers';
+                                ?>
+                                <a href="<?= $cancelUrl ?>" class="btn btn-secondary ms-2">
                                     <i class="bi bi-x-circle"></i> Cancel
                                 </a>
                             </div>

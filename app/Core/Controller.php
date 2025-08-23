@@ -19,10 +19,21 @@ class Controller
     
     protected function redirect($url)
     {
-        // Simple redirect - just add base path
-        if (strpos($url, 'http') !== 0) {
-            $url = '/azteamcrm/' . ltrim($url, '/');
+        // Don't modify absolute URLs
+        if (strpos($url, 'http') === 0) {
+            header("Location: {$url}");
+            exit;
         }
+        
+        // Check if URL already contains the base path
+        if (strpos($url, '/azteamcrm/') === 0) {
+            // URL already has the base path, use as-is
+            header("Location: {$url}");
+            exit;
+        }
+        
+        // Add base path for relative URLs
+        $url = '/azteamcrm/' . ltrim($url, '/');
         header("Location: {$url}");
         exit;
     }

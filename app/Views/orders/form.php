@@ -36,8 +36,16 @@
                                     required>
                                 <option value="">Select a customer...</option>
                                 <?php foreach ($customers as $customer): ?>
-                                    <option value="<?= $customer->customer_id ?>" 
-                                            <?= ($_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '') == $customer->customer_id ? 'selected' : '' ?>>
+                                    <?php 
+                                    // Check if this customer should be selected
+                                    $isSelected = false;
+                                    if (isset($selected_customer_id) && $selected_customer_id == $customer->customer_id) {
+                                        $isSelected = true;
+                                    } elseif (($_SESSION['old_input']['customer_id'] ?? $order->customer_id ?? '') == $customer->customer_id) {
+                                        $isSelected = true;
+                                    }
+                                    ?>
+                                    <option value="<?= $customer->customer_id ?>" <?= $isSelected ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($customer->full_name) ?>
                                         <?php if ($customer->company_name): ?>
                                             (<?= htmlspecialchars($customer->company_name) ?>)
@@ -51,7 +59,11 @@
                         </div>
                         
                         <div class="col-md-4 mb-3 d-flex align-items-end">
-                            <a href="/azteamcrm/customers/create" class="btn btn-outline-primary">
+                            <?php 
+                            // Determine return URL based on whether we're creating or editing an order
+                            $returnPath = $order ? '/azteamcrm/orders/' . $order->order_id . '/edit' : '/azteamcrm/orders/create';
+                            ?>
+                            <a href="/azteamcrm/customers/create?return_url=<?= urlencode($returnPath) ?>" class="btn btn-outline-primary">
                                 <i class="bi bi-plus-circle"></i> New Customer
                             </a>
                         </div>
@@ -139,7 +151,7 @@
                             <strong>Order Information:</strong><br>
                             Created: <?= date('F d, Y g:i A', strtotime($order->date_created)) ?><br>
                             Order ID: #<?= $order->order_id ?><br>
-                            Outstanding Balance: $<?= number_format($order->outstanding_balance, 2) ?><br>
+                            Outstanding Balance: $<?= number_format($order->getOutstandingBalance(), 2) ?><br>
                             Payment Status: 
                             <?php if ($order->payment_status === 'paid'): ?>
                                 <span class="badge bg-success">Paid</span>
