@@ -147,13 +147,13 @@ include dirname(__DIR__) . '/layouts/header.php';
                                    class="form-control <?= isset($errors['date_due']) ? 'is-invalid' : '' ?>" 
                                    id="date_due" 
                                    name="date_due" 
-                                   value="<?= $old_input['date_due'] ?? $order->date_due ?? '' ?>" 
+                                   value="<?= $old_input['date_due'] ?? $order->date_due ?? date('Y-m-d', strtotime('+2 weeks')) ?>" 
                                    min="<?= date('Y-m-d') ?>"
                                    required>
                             <?php if (isset($errors['date_due'])): ?>
                                 <div class="invalid-feedback"><?= htmlspecialchars($errors['date_due']) ?></div>
                             <?php endif; ?>
-                            <small class="text-muted">Must be today or later</small>
+                            <small class="text-muted">Defaults to 2 weeks from today. Must be today or later</small>
                         </div>
                         
                         <div class="col-md-4 mb-3">
