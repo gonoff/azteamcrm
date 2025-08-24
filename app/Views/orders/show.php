@@ -46,10 +46,11 @@
     <?php unset($_SESSION['error']); ?>
 <?php endif; ?>
 
-<div class="row">
-    <div class="col-md-8">
+<!-- Top Section: Order Details and Production Status Side by Side -->
+<div class="row mb-4">
+    <div class="col-lg-7">
         <!-- Order Details Card -->
-        <div class="card mb-4">
+        <div class="card h-100">
             <div class="card-header">
                 <h5 class="mb-0">Order Details</h5>
             </div>
@@ -125,19 +126,105 @@
                 </div>
             </div>
         </div>
-        
+    </div>
+    
+    <div class="col-lg-5">
+        <!-- Production Status Card -->
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Production Status</h5>
+            </div>
+            <div class="card-body">
+                <?php 
+                $totalItems = count($orderItems);
+                $completedItems = 0;
+                $inProductionItems = 0;
+                $pendingItems = 0;
+                
+                foreach ($orderItems as $item) {
+                    if ($item->order_item_status === 'completed') {
+                        $completedItems++;
+                    } elseif ($item->order_item_status === 'in_production') {
+                        $inProductionItems++;
+                    } elseif ($item->order_item_status === 'pending') {
+                        $pendingItems++;
+                    }
+                }
+                $completionPercentage = $totalItems > 0 ? ($completedItems / $totalItems) * 100 : 0;
+                ?>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong>Overall Progress:</strong>
+                        <strong><?= round($completionPercentage) ?>%</strong>
+                    </div>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-success" 
+                             style="width: <?= $completionPercentage ?>%">
+                            <?= $completedItems ?> completed
+                        </div>
+                        <?php if ($inProductionItems > 0): ?>
+                        <div class="progress-bar bg-info" 
+                             style="width: <?= $totalItems > 0 ? ($inProductionItems / $totalItems) * 100 : 0 ?>%">
+                            <?= $inProductionItems ?> in production
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($pendingItems > 0): ?>
+                        <div class="progress-bar bg-warning" 
+                             style="width: <?= $totalItems > 0 ? ($pendingItems / $totalItems) * 100 : 0 ?>%">
+                            <?= $pendingItems ?> pending
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Status Breakdown -->
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="text-muted small">Pending</div>
+                        <div class="h5"><?= $pendingItems ?></div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">In Production</div>
+                        <div class="h5"><?= $inProductionItems ?></div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Completed</div>
+                        <div class="h5"><?= $completedItems ?></div>
+                    </div>
+                </div>
+                
+                <?php if ($completionPercentage == 100 && $order->payment_status === 'paid'): ?>
+                    <hr>
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle"></i> Order Complete!
+                    </div>
+                <?php elseif ($order->isOverdue()): ?>
+                    <hr>
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Order is overdue!
+                    </div>
+                <?php elseif ($totalItems == 0): ?>
+                    <hr>
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-info-circle"></i> No items added yet
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Middle Section: Order Items Full Width -->
+<div class="row mb-4">
+    <div class="col-12">
         <!-- Order Items Card -->
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Order Items</h5>
-                <div>
-                    <a href="/azteamcrm/orders/<?= $order->order_id ?>/order-items" class="btn btn-sm btn-info">
-                        <i class="bi bi-list"></i> View All
-                    </a>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createOrderItemModal">
-                        <i class="bi bi-plus"></i> Add Item
-                    </button>
-                </div>
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createOrderItemModal">
+                    <i class="bi bi-plus"></i> Add Item
+                </button>
             </div>
             <div class="card-body">
                 <?php if (empty($orderItems)): ?>
@@ -243,93 +330,11 @@
             </div>
         </div>
     </div>
-    
-    <div class="col-md-4">
-        <!-- Production Status Card -->
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">Production Status</h5>
-            </div>
-            <div class="card-body">
-                <?php 
-                $totalItems = count($orderItems);
-                $completedItems = 0;
-                $inProductionItems = 0;
-                $pendingItems = 0;
-                
-                foreach ($orderItems as $item) {
-                    if ($item->order_item_status === 'completed') {
-                        $completedItems++;
-                    } elseif ($item->order_item_status === 'in_production') {
-                        $inProductionItems++;
-                    } elseif ($item->order_item_status === 'pending') {
-                        $pendingItems++;
-                    }
-                }
-                $completionPercentage = $totalItems > 0 ? ($completedItems / $totalItems) * 100 : 0;
-                ?>
-                
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-2">
-                        <strong>Overall Progress:</strong>
-                        <strong><?= round($completionPercentage) ?>%</strong>
-                    </div>
-                    <div class="progress" style="height: 25px;">
-                        <div class="progress-bar bg-success" 
-                             style="width: <?= $completionPercentage ?>%">
-                            <?= $completedItems ?> completed
-                        </div>
-                        <?php if ($inProductionItems > 0): ?>
-                        <div class="progress-bar bg-info" 
-                             style="width: <?= $totalItems > 0 ? ($inProductionItems / $totalItems) * 100 : 0 ?>%">
-                            <?= $inProductionItems ?> in production
-                        </div>
-                        <?php endif; ?>
-                        <?php if ($pendingItems > 0): ?>
-                        <div class="progress-bar bg-warning" 
-                             style="width: <?= $totalItems > 0 ? ($pendingItems / $totalItems) * 100 : 0 ?>%">
-                            <?= $pendingItems ?> pending
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                
-                <!-- Status Breakdown -->
-                <div class="row text-center">
-                    <div class="col-4">
-                        <div class="text-muted small">Pending</div>
-                        <div class="h5"><?= $pendingItems ?></div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-muted small">In Production</div>
-                        <div class="h5"><?= $inProductionItems ?></div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-muted small">Completed</div>
-                        <div class="h5"><?= $completedItems ?></div>
-                    </div>
-                </div>
-                
-                <?php if ($completionPercentage == 100 && $order->payment_status === 'paid'): ?>
-                    <hr>
-                    <div class="alert alert-success mb-0">
-                        <i class="bi bi-check-circle"></i> Order Complete!
-                    </div>
-                <?php elseif ($order->isOverdue()): ?>
-                    <hr>
-                    <div class="alert alert-danger mb-0">
-                        <i class="bi bi-exclamation-triangle"></i> Order is overdue!
-                    </div>
-                <?php elseif ($totalItems == 0): ?>
-                    <hr>
-                    <div class="alert alert-warning mb-0">
-                        <i class="bi bi-info-circle"></i> No items added yet
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
-        
-        <!-- Financial Summary Card -->
+</div>
+
+<!-- Bottom Section: Order Summary Full Width -->
+<div class="row">
+    <div class="col-12">
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">Order Summary</h5>

@@ -691,6 +691,14 @@ a:hover {
   font-weight: 500;
 }
 
+/* Order Page Layout Improvements */
+@media (min-width: 992px) {
+  .order-details-section .card,
+  .production-status-section .card {
+    height: 100%;
+  }
+}
+
 /* Order Items Container - Custom solution for dropdown clipping */
 .order-items-container {
   overflow: visible !important;

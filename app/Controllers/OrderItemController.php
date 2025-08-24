@@ -9,30 +9,31 @@ use App\Models\Customer;
 
 class OrderItemController extends Controller
 {
-    public function index($order_id)
-    {
-        $this->requireAuth();
-        
-        $order = new Order();
-        $orderData = $order->find($order_id);
-        
-        if (!$orderData) {
-            http_response_code(404);
-            $this->view('errors/404');
-            return;
-        }
-        
-        $orderItems = $orderData->getOrderItems();
-        $customer = $orderData->getCustomer();
-        
-        $this->view('order-items/index', [
-            'order' => $orderData,
-            'customer' => $customer,
-            'orderItems' => $orderItems,
-            'title' => 'Order Items - Order #' . $orderData->order_id,
-            'csrf_token' => $this->csrf()
-        ]);
-    }
+    // Index method removed - order items are now displayed in the order show page
+    // public function index($order_id)
+    // {
+    //     $this->requireAuth();
+    //     
+    //     $order = new Order();
+    //     $orderData = $order->find($order_id);
+    //     
+    //     if (!$orderData) {
+    //         http_response_code(404);
+    //         $this->view('errors/404');
+    //         return;
+    //     }
+    //     
+    //     $orderItems = $orderData->getOrderItems();
+    //     $customer = $orderData->getCustomer();
+    //     
+    //     $this->view('order-items/index', [
+    //         'order' => $orderData,
+    //         'customer' => $customer,
+    //         'orderItems' => $orderItems,
+    //         'title' => 'Order Items - Order #' . $orderData->order_id,
+    //         'csrf_token' => $this->csrf()
+    //     ]);
+    // }
     
     public function create($order_id)
     {
