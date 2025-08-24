@@ -137,8 +137,8 @@
                 <?php if (empty($orderItems)): ?>
                     <p class="text-muted text-center">No order items added yet.</p>
                 <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table table-sm" id="orderItemsTable">
+                    <div class="order-items-container">
+                        <table class="table table-sm order-items-table" id="orderItemsTable">
                             <thead>
                                 <tr>
                                     <th>Description</th>
@@ -183,30 +183,30 @@
                                     <td><?= $item->getCustomMethodLabel() ?></td>
                                     <td>
                                         <div class="dropdown">
-                                            <span class="dropdown-toggle supplier-status-badge" 
-                                                  data-bs-toggle="dropdown" 
-                                                  style="cursor: pointer;">
+                                            <button class="btn btn-sm dropdown-toggle p-0 border-0" 
+                                                    type="button" 
+                                                    data-bs-toggle="dropdown">
                                                 <?= $item->getSupplierStatusBadge() ?>
-                                            </span>
+                                            </button>
                                             <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item update-supplier-status" href="#" data-status="awaiting_order">Awaiting Order</a></li>
-                                                <li><a class="dropdown-item update-supplier-status" href="#" data-status="order_made">Order Made</a></li>
-                                                <li><a class="dropdown-item update-supplier-status" href="#" data-status="order_arrived">Order Arrived</a></li>
-                                                <li><a class="dropdown-item update-supplier-status" href="#" data-status="order_delivered">Order Delivered</a></li>
+                                                <li><a class="dropdown-item update-supplier-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="awaiting_order">Awaiting Order</a></li>
+                                                <li><a class="dropdown-item update-supplier-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="order_made">Order Made</a></li>
+                                                <li><a class="dropdown-item update-supplier-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="order_arrived">Order Arrived</a></li>
+                                                <li><a class="dropdown-item update-supplier-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="order_delivered">Order Delivered</a></li>
                                             </ul>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="dropdown">
-                                            <span class="dropdown-toggle item-status-badge" 
-                                                  data-bs-toggle="dropdown" 
-                                                  style="cursor: pointer;">
+                                            <button class="btn btn-sm dropdown-toggle p-0 border-0" 
+                                                    type="button" 
+                                                    data-bs-toggle="dropdown">
                                                 <?= $item->getStatusBadge() ?>
-                                            </span>
+                                            </button>
                                             <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item update-item-status" href="#" data-status="pending">Pending</a></li>
-                                                <li><a class="dropdown-item update-item-status" href="#" data-status="in_production">In Production</a></li>
-                                                <li><a class="dropdown-item update-item-status" href="#" data-status="completed">Completed</a></li>
+                                                <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="pending">Pending</a></li>
+                                                <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="in_production">In Production</a></li>
+                                                <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="completed">Completed</a></li>
                                             </ul>
                                         </div>
                                     </td>
@@ -449,17 +449,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const paymentStatusSelect = document.getElementById('payment_status');
     const paidAmountGroup = document.getElementById('paidAmountGroup');
     
-    paymentStatusSelect.addEventListener('change', function() {
-        if (this.value === 'partial') {
+    if (paymentStatusSelect && paidAmountGroup) {
+        paymentStatusSelect.addEventListener('change', function() {
+            if (this.value === 'partial') {
+                paidAmountGroup.classList.remove('d-none');
+            } else {
+                paidAmountGroup.classList.add('d-none');
+            }
+        });
+        
+        // Trigger change event on page load to set initial state
+        if (paymentStatusSelect.value === 'partial') {
             paidAmountGroup.classList.remove('d-none');
-        } else {
-            paidAmountGroup.classList.add('d-none');
         }
-    });
-    
-    // Trigger change event on page load to set initial state
-    if (paymentStatusSelect.value === 'partial') {
-        paidAmountGroup.classList.remove('d-none');
     }
     
     // Inline editing functionality for order items
@@ -549,73 +551,111 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Status update functionality
+    // Direct event attachment for status updates - proven to work
+    // Handle item status updates
     document.querySelectorAll('.update-item-status').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
-            const newStatus = this.getAttribute('data-status');
-            const itemId = this.closest('tr').getAttribute('data-item-id');
-            const badge = this.closest('td').querySelector('.item-status-badge');
+            e.stopPropagation(); // Prevent Bootstrap interference
             
-            fetch('/azteamcrm/order-items/' + itemId + '/update-status', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'csrf_token=<?= $csrf_token ?>&status_type=order_item_status&status=' + newStatus
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.badge) {
-                    badge.outerHTML = data.badge;
-                    // Re-attach dropdown functionality to new badge
-                    const newBadge = badge.parentElement.querySelector('.item-status-badge');
-                    if (newBadge) {
-                        new bootstrap.Dropdown(newBadge);
-                    }
-                } else {
-                    alert('Failed to update status');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to update status');
-            });
+            const itemId = this.dataset.id;
+            const status = this.dataset.status;
+            
+            // Add debugging
+            console.log('Updating item status:', itemId, status);
+            
+            // Close the dropdown manually
+            const dropdownToggle = this.closest('.dropdown').querySelector('.dropdown-toggle');
+            const dropdown = bootstrap.Dropdown.getInstance(dropdownToggle);
+            if (dropdown) dropdown.hide();
+            
+            // Call the update function
+            updateItemStatus(itemId, status);
         });
     });
     
+    // Handle supplier status updates
     document.querySelectorAll('.update-supplier-status').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
-            const newStatus = this.getAttribute('data-status');
-            const itemId = this.closest('tr').getAttribute('data-item-id');
-            const badge = this.closest('td').querySelector('.supplier-status-badge');
+            e.stopPropagation(); // Prevent Bootstrap interference
             
-            fetch('/azteamcrm/order-items/' + itemId + '/update-status', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'csrf_token=<?= $csrf_token ?>&status_type=supplier_status&status=' + newStatus
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.badge) {
-                    badge.outerHTML = data.badge;
-                    // Re-attach dropdown functionality to new badge
-                    const newBadge = badge.parentElement.querySelector('.supplier-status-badge');
-                    if (newBadge) {
-                        new bootstrap.Dropdown(newBadge);
-                    }
-                } else {
-                    alert('Failed to update supplier status');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to update supplier status');
-            });
+            const itemId = this.dataset.id;
+            const status = this.dataset.status;
+            
+            // Add debugging
+            console.log('Updating supplier status:', itemId, status);
+            
+            // Close the dropdown manually
+            const dropdownToggle = this.closest('.dropdown').querySelector('.dropdown-toggle');
+            const dropdown = bootstrap.Dropdown.getInstance(dropdownToggle);
+            if (dropdown) dropdown.hide();
+            
+            // Call the update function
+            updateSupplierStatus(itemId, status);
         });
+    });
+    
+    // Simple function for item status updates
+    function updateItemStatus(itemId, newStatus) {
+        console.log('Sending item status update request for item:', itemId, 'to status:', newStatus);
+        
+        fetch('/azteamcrm/order-items/' + itemId + '/update-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'csrf_token=<?= $csrf_token ?>&status_type=order_item_status&status=' + newStatus
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Item status update response:', data);
+            if (data.success) {
+                // Simple reload after successful update
+                console.log('Status updated successfully, reloading page...');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                alert('Failed to update status: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error updating item status:', error);
+            alert('Failed to update status: ' + error.message);
+        });
+    }
+    
+    // Simple function for supplier status updates
+    function updateSupplierStatus(itemId, newStatus) {
+        console.log('Sending supplier status update request for item:', itemId, 'to status:', newStatus);
+        
+        fetch('/azteamcrm/order-items/' + itemId + '/update-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'csrf_token=<?= $csrf_token ?>&status_type=supplier_status&status=' + newStatus
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Supplier status update response:', data);
+            if (data.success) {
+                // Simple reload after successful update
+                console.log('Status updated successfully, reloading page...');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                alert('Failed to update supplier status: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error updating supplier status:', error);
+            alert('Failed to update supplier status: ' + error.message);
+        });
+    }
+    
+    // Simple Bootstrap dropdown configuration for better positioning
+    document.querySelectorAll('.dropdown').forEach(dropdown => {
+        dropdown.setAttribute('data-bs-boundary', 'viewport');
+        dropdown.setAttribute('data-bs-flip', 'true');
     });
 });
 </script>

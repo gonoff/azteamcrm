@@ -691,29 +691,72 @@ a:hover {
   font-weight: 500;
 }
 
-/* Fix for dropdown clipping in table-responsive containers */
-.table-responsive {
+/* Order Items Container - Custom solution for dropdown clipping */
+.order-items-container {
   overflow: visible !important;
+  width: 100%;
+  position: relative;
 }
 
-/* For mobile, we'll allow horizontal scroll only when needed */
+/* Order Items Table Styling */
+.order-items-table {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+/* Comprehensive Dropdown Positioning Fix */
+.order-items-table .dropdown {
+  position: static; /* Allow normal document flow */
+}
+
+.order-items-table .dropdown-menu {
+  position: absolute !important;
+  z-index: 9999 !important; /* Above everything */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  min-width: 150px;
+}
+
+/* Ensure dropdown menus don't get clipped by any parent */
+.order-items-table .dropdown.show .dropdown-menu {
+  display: block !important;
+  position: absolute !important;
+  will-change: transform;
+}
+
+/* Mobile Responsive Handling */
 @media (max-width: 768px) {
-  .table-responsive {
+  .order-items-container {
     overflow-x: auto !important;
     overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Ensure table doesn't shrink below minimum width on mobile */
+  .order-items-table {
+    min-width: 800px;
+  }
+  
+  /* Larger dropdown touch targets on mobile */
+  .order-items-table .dropdown-toggle {
+    padding: 8px 12px;
+    min-height: 44px; /* iOS touch target recommendation */
+    display: flex;
+    align-items: center;
   }
 }
 
-/* Ensure dropdowns in tables have proper stacking and positioning */
-#orderItemsTable .dropdown-menu {
-  position: absolute;
-  z-index: 1050;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+/* Legacy table-responsive fix - for other tables that still use it */
+.table-responsive:not(.order-items-container) {
+  overflow: visible !important;
 }
 
-/* Ensure dropdown container allows overflow */
-#orderItemsTable .dropdown {
-  position: relative;
+@media (max-width: 768px) {
+  .table-responsive:not(.order-items-container) {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
 }
 
 /* Card Header Color Variants */
