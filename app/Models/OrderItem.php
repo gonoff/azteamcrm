@@ -175,10 +175,10 @@ class OrderItem extends Model
         }
         
         $badges = [
-            'overdue' => '<span class="badge bg-danger">OVERDUE</span>',
-            'due_today' => '<span class="badge bg-warning">DUE TODAY</span>',
-            'due_soon' => '<span class="badge bg-info">DUE SOON</span>',
-            'rush' => '<span class="badge bg-danger">RUSH</span>',
+            'overdue' => '<span class="badge badge-danger">OVERDUE</span>',
+            'due_today' => '<span class="badge badge-warning">DUE TODAY</span>',
+            'due_soon' => '<span class="badge badge-info">DUE SOON</span>',
+            'rush' => '<span class="badge badge-danger">RUSH</span>',
             'normal' => ''
         ];
         
@@ -247,6 +247,12 @@ class OrderItem extends Model
     
     public function getCompletedTodayCount()
     {
+        // Note: Without an updated_at column, we cannot track when items were completed
+        // This would require adding timestamp tracking to the order_items table
+        // For now, returning 0 as we cannot determine completion time
+        return 0;
+        
+        /* Future implementation when updated_at column is added:
         $sql = "SELECT COUNT(*) as count 
                 FROM {$this->table} 
                 WHERE order_item_status = 'completed' 
@@ -259,6 +265,7 @@ class OrderItem extends Model
             return $result['count'] ?? 0;
         }
         return 0;
+        */
     }
     
     public function getItemsDueToday()

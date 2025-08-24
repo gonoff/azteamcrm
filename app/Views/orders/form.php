@@ -104,7 +104,7 @@ include dirname(__DIR__) . '/layouts/header.php';
                                 $returnPath = $order ? '/azteamcrm/orders/' . $order->order_id . '/edit' : '/azteamcrm/orders/create';
                                 ?>
                                 <a href="/azteamcrm/customers/create?return_url=<?= urlencode($returnPath) ?>" 
-                                   class="btn btn-outline-primary <?= $displayCustomer ? 'd-none' : '' ?>" 
+                                   class="btn btn-primary <?= $displayCustomer ? 'd-none' : '' ?>" 
                                    id="new_customer_btn">
                                     <i class="bi bi-plus-circle"></i> New Customer
                                 </a>
@@ -178,17 +178,31 @@ include dirname(__DIR__) . '/layouts/header.php';
                             <?php endif; ?>
                         </div>
                         
+                        <?php if ($order): ?>
                         <div class="col-md-4 mb-3">
-                            <label for="payment_status" class="form-label">Payment Status</label>
-                            <select class="form-select" id="payment_status" name="payment_status">
-                                <?php $selectedPayment = $old_input['payment_status'] ?? $order->payment_status ?? 'unpaid'; ?>
-                                <option value="unpaid" <?= $selectedPayment === 'unpaid' ? 'selected' : '' ?>>Unpaid</option>
-                                <option value="partial" <?= $selectedPayment === 'partial' ? 'selected' : '' ?>>Partial</option>
-                                <option value="paid" <?= $selectedPayment === 'paid' ? 'selected' : '' ?>>Paid</option>
-                            </select>
+                            <label class="form-label">Payment Status</label>
+                            <div class="form-control-plaintext">
+                                <?= $order->getPaymentStatusBadge() ?>
+                                <small class="text-muted d-block mt-1">
+                                    <i class="bi bi-info-circle"></i> Updated via payment recording
+                                </small>
+                            </div>
                         </div>
+                        <?php else: ?>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Payment Status</label>
+                            <div class="form-control-plaintext">
+                                <span class="badge badge-danger">Unpaid</span>
+                                <small class="text-muted d-block mt-1">
+                                    <i class="bi bi-info-circle"></i> New orders start as unpaid
+                                </small>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     
+                    <?php if ($order): ?>
+                    <!-- Order Total - Only show for existing orders -->
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="order_total" class="form-label">Order Total</label>
@@ -197,25 +211,90 @@ include dirname(__DIR__) . '/layouts/header.php';
                                 <input type="text" 
                                        class="form-control form-control-readonly" 
                                        id="order_total" 
-                                       value="<?= number_format($order->order_total ?? 0.00, 2) ?>" 
+                                       value="<?= number_format($order->order_total, 2) ?>" 
                                        readonly>
                             </div>
-                            <small class="text-muted">
-                                <?php if ($order): ?>
-                                    Total is automatically calculated from order items
-                                <?php else: ?>
-                                    Add items to the order to calculate the total
-                                <?php endif; ?>
-                            </small>
+                            <small class="text-muted">Total is automatically calculated from order items</small>
                         </div>
                         
                         <div class="col-md-6 mb-3">
                             <div class="alert alert-info">
                                 <i class="bi bi-info-circle"></i> <strong>Note:</strong><br>
-                                Orders are automatically marked as <span class="badge bg-danger">RUSH</span> when due within 7 days.
+                                Orders are automatically marked as <span class="badge badge-danger">RUSH</span> when due within 7 days.
                             </div>
                         </div>
                     </div>
+                    <?php else: ?>
+                    <!-- New Order Info -->
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> <strong>Creating New Order</strong><br>
+                                After creating the order, you can add items to calculate totals and apply tax settings.
+                                Orders are automatically marked as <span class="badge badge-danger">RUSH</span> when due within 7 days.
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($order): ?>
+                    <!-- Tax Section - Only show for existing orders -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Tax Settings</h6>
+                                    <div class="form-check">
+                                        <input type="checkbox" 
+                                               class="form-check-input" 
+                                               id="apply_ct_tax" 
+                                               name="apply_ct_tax" 
+                                               value="1"
+                                               <?= ($old_input['apply_ct_tax'] ?? $order->apply_ct_tax ?? 0) ? 'checked' : '' ?>
+                                               onchange="calculateTax()">
+                                        <label class="form-check-label" for="apply_ct_tax">
+                                            Apply Connecticut Tax (6.35%)
+                                        </label>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">Tax Amount:</small>
+                                        <strong id="tax_display">$<?= number_format($order->tax_amount ?? 0.00, 2) ?></strong>
+                                    </div>
+                                    <input type="hidden" id="tax_amount" name="tax_amount" value="<?= $order->tax_amount ?? 0.00 ?>">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <?php if ($order->order_total > 0): ?>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Order Summary</h6>
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td>Subtotal:</td>
+                                            <td class="text-end">$<span id="summary_subtotal"><?= number_format($order->order_total, 2) ?></span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Tax:</td>
+                                            <td class="text-end">$<span id="summary_tax"><?= number_format($order->tax_amount, 2) ?></span></td>
+                                        </tr>
+                                        <tr class="fw-bold">
+                                            <td>Total:</td>
+                                            <td class="text-end">$<span id="summary_total"><?= number_format($order->getTotalAmount(), 2) ?></span></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <?php else: ?>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-info-circle"></i> <strong>Add Order Items</strong><br>
+                                Tax will be calculated after adding items to this order.
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     
                     <div class="mb-3">
                         <label for="order_notes" class="form-label">Order Notes</label>
@@ -228,19 +307,35 @@ include dirname(__DIR__) . '/layouts/header.php';
                     </div>
                     
                     <?php if ($order): ?>
-                        <div class="alert alert-info">
-                            <strong>Order Information:</strong><br>
-                            Created: <?= date('F d, Y g:i A', strtotime($order->date_created)) ?><br>
-                            Order ID: #<?= $order->order_id ?><br>
-                            Outstanding Balance: $<?= number_format($order->getOutstandingBalance(), 2) ?><br>
-                            Payment Status: 
-                            <?php if ($order->payment_status === 'paid'): ?>
-                                <span class="badge bg-success">Paid</span>
-                            <?php elseif ($order->payment_status === 'partial'): ?>
-                                <span class="badge bg-warning">Partial</span>
-                            <?php else: ?>
-                                <span class="badge bg-danger">Unpaid</span>
-                            <?php endif; ?>
+                        <div class="card mb-3" style="background-color: var(--bg-subtle);">
+                            <div class="card-body">
+                                <h6 class="card-title">Financial Summary</h6>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Subtotal</small>
+                                        <h5>$<?= number_format($order->order_total, 2) ?></h5>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Total Amount</small>
+                                        <h5>$<?= number_format($order->getTotalAmount(), 2) ?></h5>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Amount Paid</small>
+                                        <h5 class="text-success">$<?= number_format($order->amount_paid, 2) ?></h5>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Balance Due</small>
+                                        <h5 class="<?= $order->getBalanceDue() > 0 ? 'text-danger' : 'text-success' ?>">
+                                            $<?= number_format($order->getBalanceDue(), 2) ?>
+                                        </h5>
+                                    </div>
+                                </div>
+                                <hr>
+                                <small class="text-muted">
+                                    Created: <?= date('F d, Y g:i A', strtotime($order->date_created)) ?> | 
+                                    Order ID: #<?= $order->order_id ?>
+                                </small>
+                            </div>
                         </div>
                     <?php endif; ?>
                     
@@ -492,6 +587,41 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Tax calculation function
+function calculateTax() {
+    const checkbox = document.getElementById('apply_ct_tax');
+    const taxDisplay = document.getElementById('tax_display');
+    const taxAmountInput = document.getElementById('tax_amount');
+    const orderTotalInput = document.getElementById('order_total');
+    
+    // Get the subtotal (order total)
+    const subtotalText = orderTotalInput.value.replace(/,/g, '');
+    const subtotal = parseFloat(subtotalText) || 0;
+    
+    let taxAmount = 0;
+    if (checkbox.checked) {
+        // Calculate 6.35% tax
+        taxAmount = Math.round(subtotal * 0.0635 * 100) / 100;
+    }
+    
+    // Update display
+    taxDisplay.textContent = '$' + taxAmount.toFixed(2);
+    taxAmountInput.value = taxAmount.toFixed(2);
+    
+    // Update summary if it exists
+    const summaryTax = document.getElementById('summary_tax');
+    const summaryTotal = document.getElementById('summary_total');
+    
+    if (summaryTax) {
+        summaryTax.textContent = taxAmount.toFixed(2);
+    }
+    
+    if (summaryTotal) {
+        const total = subtotal + taxAmount;
+        summaryTotal.textContent = total.toFixed(2);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {

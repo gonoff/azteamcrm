@@ -28,6 +28,36 @@
         <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
+    <!-- Search Bar -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="GET" action="/azteamcrm/customers" class="row g-3">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" 
+                               class="form-control" 
+                               name="search" 
+                               value="<?= htmlspecialchars($search_term ?? '') ?>"
+                               placeholder="Search customers by name, company, phone, or email...">
+                        <button class="btn btn-primary" type="submit">Search</button>
+                        <?php if (!empty($search_term)): ?>
+                        <a href="/azteamcrm/customers" class="btn btn-secondary">Clear</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results Info -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <?= $pagination_info ?? '' ?>
+        <?php if (!empty($search_term)): ?>
+        <small class="text-muted">Search: "<?= htmlspecialchars($search_term) ?>"</small>
+        <?php endif; ?>
+    </div>
+
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
@@ -54,16 +84,16 @@
                             <td><?= htmlspecialchars($customer->city . ', ' . $customer->state) ?></td>
                             <td><?= $customer->getStatusBadge() ?></td>
                             <td>
-                                <span class="badge bg-info"><?= $customer->getTotalOrders() ?></span>
+                                <span class="badge badge-info"><?= $customer->getTotalOrders() ?></span>
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
                                     <a href="/azteamcrm/customers/<?= $customer->customer_id ?>" 
-                                       class="btn btn-sm btn-info" title="View">
+                                       class="btn btn-sm btn-secondary" title="View">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     <a href="/azteamcrm/customers/<?= $customer->customer_id ?>/edit" 
-                                       class="btn btn-sm btn-warning" title="Edit">
+                                       class="btn btn-sm btn-secondary" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <?php if ($_SESSION['user_role'] === 'administrator' && $customer->getTotalOrders() == 0): ?>
@@ -85,15 +115,14 @@
             </div>
         </div>
     </div>
-</div>
 
-<script>
-$(document).ready(function() {
-    $('#customersTable').DataTable({
-        order: [[1, 'asc']],
-        pageLength: 25
-    });
-});
-</script>
+    <!-- Pagination Controls -->
+    <?php if (isset($pagination_html)): ?>
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <?= $pagination_info ?? '' ?>
+        <?= $pagination_html ?? '' ?>
+    </div>
+    <?php endif; ?>
+</div>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

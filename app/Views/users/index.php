@@ -2,7 +2,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h2">User Management</h1>
-    <a href="/azteamcrm/users/create" class="btn btn-success">
+    <a href="/azteamcrm/users/create" class="btn btn-primary">
         <i class="bi bi-plus-circle"></i> Add New User
     </a>
 </div>
@@ -55,23 +55,23 @@
                                 <td>
                                     <strong><?= htmlspecialchars($user->username) ?></strong>
                                     <?php if ($user->id == $_SESSION['user_id']): ?>
-                                        <span class="badge bg-info ms-1">You</span>
+                                        <span class="badge badge-info ms-1">You</span>
                                     <?php endif; ?>
                                 </td>
                                 <td><?= htmlspecialchars($user->full_name) ?></td>
                                 <td><?= htmlspecialchars($user->email) ?></td>
                                 <td>
                                     <?php if ($user->role === 'administrator'): ?>
-                                        <span class="badge bg-danger">Administrator</span>
+                                        <span class="badge badge-danger">Administrator</span>
                                     <?php else: ?>
-                                        <span class="badge bg-primary">Production Team</span>
+                                        <span class="badge badge-primary">Production Team</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if ($user->is_active): ?>
-                                        <span class="badge bg-success">Active</span>
+                                        <span class="badge badge-success">Active</span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary">Inactive</span>
+                                        <span class="badge badge-secondary">Inactive</span>
                                     <?php endif; ?>
                                 </td>
                                 <td><?= date('M d, Y', strtotime($user->created_at)) ?></td>
@@ -166,8 +166,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         // Update status badge
                         const statusBadge = this.closest('tr').querySelector('td:nth-child(6) .badge');
-                        statusBadge.classList.remove('bg-secondary');
-                        statusBadge.classList.add('bg-success');
+                        statusBadge.classList.remove('badge-secondary');
+                        statusBadge.classList.add('badge-success');
                         statusBadge.textContent = 'Active';
                     } else {
                         icon.classList.remove('bi-toggle-on');
@@ -176,8 +176,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         // Update status badge
                         const statusBadge = this.closest('tr').querySelector('td:nth-child(6) .badge');
-                        statusBadge.classList.remove('bg-success');
-                        statusBadge.classList.add('bg-secondary');
+                        statusBadge.classList.remove('badge-success');
+                        statusBadge.classList.add('badge-secondary');
                         statusBadge.textContent = 'Inactive';
                     }
                     

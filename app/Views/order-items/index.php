@@ -6,7 +6,7 @@
         <a href="/azteamcrm/orders/<?= $order->order_id ?>" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to Order
         </a>
-        <a href="/azteamcrm/orders/<?= $order->order_id ?>/order-items/create" class="btn btn-success">
+        <a href="/azteamcrm/orders/<?= $order->order_id ?>/order-items/create" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Add Order Item
         </a>
     </div>
@@ -104,13 +104,13 @@
                                     <ul class="dropdown-menu">
                                         <li><h6 class="dropdown-header">Update Item Status</h6></li>
                                         <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="pending">
-                                            <span class="badge bg-warning">Pending</span>
+                                            <span class="badge badge-warning">Pending</span>
                                         </a></li>
                                         <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="in_production">
-                                            <span class="badge bg-info">In Production</span>
+                                            <span class="badge badge-info">In Production</span>
                                         </a></li>
                                         <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="completed">
-                                            <span class="badge bg-success">Completed</span>
+                                            <span class="badge badge-success">Completed</span>
                                         </a></li>
                                     </ul>
                                 </div>
@@ -123,16 +123,16 @@
                                     <ul class="dropdown-menu">
                                         <li><h6 class="dropdown-header">Update Supplier Status</h6></li>
                                         <li><a class="dropdown-item update-supplier-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="awaiting_order">
-                                            <span class="badge bg-secondary">Awaiting Order</span>
+                                            <span class="badge badge-secondary">Awaiting Order</span>
                                         </a></li>
                                         <li><a class="dropdown-item update-supplier-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="order_made">
-                                            <span class="badge bg-info">Order Made</span>
+                                            <span class="badge badge-info">Order Made</span>
                                         </a></li>
                                         <li><a class="dropdown-item update-supplier-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="order_arrived">
-                                            <span class="badge bg-primary">Order Arrived</span>
+                                            <span class="badge badge-primary">Order Arrived</span>
                                         </a></li>
                                         <li><a class="dropdown-item update-supplier-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="order_delivered">
-                                            <span class="badge bg-success">Order Delivered</span>
+                                            <span class="badge badge-success">Order Delivered</span>
                                         </a></li>
                                     </ul>
                                 </div>
@@ -152,7 +152,7 @@
             </div>
             
             <!-- Summary -->
-            <div class="mt-3 p-3 bg-light rounded">
+            <div class="mt-3 p-3 rounded" style="background-color: var(--bg-subtle);">
                 <div class="row">
                     <div class="col-md-4">
                         <strong>Total Items:</strong> <?= count($orderItems) ?>

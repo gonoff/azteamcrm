@@ -31,6 +31,7 @@ return [
     '/orders/{id}/delete' => 'OrderController@delete',
     '/orders/{id}/update-status' => 'OrderController@updateStatus',
     '/orders/{id}/cancel' => 'OrderController@cancelOrder',
+    '/orders/{id}/process-payment' => 'OrderController@processPayment',
     
     // Order Items
     '/orders/{order_id}/order-items' => 'OrderItemController@index',
@@ -40,6 +41,7 @@ return [
     '/order-items/{id}/update' => 'OrderItemController@update',
     '/order-items/{id}/delete' => 'OrderItemController@delete',
     '/order-items/{id}/update-status' => 'OrderItemController@updateStatus',
+    '/order-items/{id}/update-inline' => 'OrderItemController@updateInline',
     
     // Users Management
     '/users' => 'UserController@index',

@@ -215,4 +215,183 @@ class Controller
         
         return $errors;
     }
+    
+    /**
+     * Standardized error handling methods
+     */
+    protected function handleDatabaseOperation($operation, $successMessage = null, $failureMessage = null)
+    {
+        try {
+            $result = $operation();
+            
+            if ($result) {
+                if ($successMessage) {
+                    $this->setSuccess($successMessage);
+                }
+                return $result;
+            } else {
+                $this->setError($failureMessage ?: 'Operation failed. Please try again.');
+                return false;
+            }
+        } catch (\Exception $e) {
+            return $this->handleException($e, $failureMessage);
+        }
+    }
+    
+    protected function setError($message)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        $_SESSION['error'] = $message;
+    }
+    
+    protected function setSuccess($message)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        $_SESSION['success'] = $message;
+    }
+    
+    protected function handleException(\Exception $e, $userMessage = null)
+    {
+        // Log the actual error for debugging (in a real app, use proper logging)
+        error_log("Database Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+        
+        // Set user-friendly error message
+        $message = $userMessage ?: 'An unexpected error occurred. Please try again or contact support if the problem persists.';
+        $this->setError($message);
+        
+        return false;
+    }
+    
+    protected function validateAndSanitize($data, $rules)
+    {
+        // Sanitize the data first
+        $sanitizedData = $this->sanitize($data);
+        
+        // Then validate
+        $errors = $this->validate($sanitizedData, $rules);
+        
+        if (!empty($errors)) {
+            $_SESSION['errors'] = $errors;
+            $_SESSION['old_input'] = $sanitizedData;
+            return false;
+        }
+        
+        return $sanitizedData;
+    }
+    
+    /**
+     * Pagination Helper Methods
+     */
+    protected function renderPagination($pagination, $baseUrl, $searchParams = [])
+    {
+        if ($pagination['total_pages'] <= 1) {
+            return '';
+        }
+        
+        $html = '<nav aria-label="Page navigation">';
+        $html .= '<ul class="pagination justify-content-center">';
+        
+        // Previous button
+        if ($pagination['has_previous']) {
+            $prevUrl = $this->buildPaginationUrl($baseUrl, $pagination['previous_page'], $searchParams);
+            $html .= '<li class="page-item">';
+            $html .= '<a class="page-link" href="' . $prevUrl . '" aria-label="Previous">';
+            $html .= '<span aria-hidden="true">&laquo;</span>';
+            $html .= '</a>';
+            $html .= '</li>';
+        } else {
+            $html .= '<li class="page-item disabled">';
+            $html .= '<span class="page-link" aria-label="Previous">';
+            $html .= '<span aria-hidden="true">&laquo;</span>';
+            $html .= '</span>';
+            $html .= '</li>';
+        }
+        
+        // Page numbers
+        $start = max(1, $pagination['current_page'] - 2);
+        $end = min($pagination['total_pages'], $pagination['current_page'] + 2);
+        
+        // Always show first page if not in range
+        if ($start > 1) {
+            $firstUrl = $this->buildPaginationUrl($baseUrl, 1, $searchParams);
+            $html .= '<li class="page-item">';
+            $html .= '<a class="page-link" href="' . $firstUrl . '">1</a>';
+            $html .= '</li>';
+            if ($start > 2) {
+                $html .= '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+        }
+        
+        // Page number links
+        for ($i = $start; $i <= $end; $i++) {
+            $pageUrl = $this->buildPaginationUrl($baseUrl, $i, $searchParams);
+            if ($i == $pagination['current_page']) {
+                $html .= '<li class="page-item active" aria-current="page">';
+                $html .= '<span class="page-link">' . $i . '</span>';
+                $html .= '</li>';
+            } else {
+                $html .= '<li class="page-item">';
+                $html .= '<a class="page-link" href="' . $pageUrl . '">' . $i . '</a>';
+                $html .= '</li>';
+            }
+        }
+        
+        // Always show last page if not in range
+        if ($end < $pagination['total_pages']) {
+            if ($end < $pagination['total_pages'] - 1) {
+                $html .= '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+            $lastUrl = $this->buildPaginationUrl($baseUrl, $pagination['total_pages'], $searchParams);
+            $html .= '<li class="page-item">';
+            $html .= '<a class="page-link" href="' . $lastUrl . '">' . $pagination['total_pages'] . '</a>';
+            $html .= '</li>';
+        }
+        
+        // Next button
+        if ($pagination['has_next']) {
+            $nextUrl = $this->buildPaginationUrl($baseUrl, $pagination['next_page'], $searchParams);
+            $html .= '<li class="page-item">';
+            $html .= '<a class="page-link" href="' . $nextUrl . '" aria-label="Next">';
+            $html .= '<span aria-hidden="true">&raquo;</span>';
+            $html .= '</a>';
+            $html .= '</li>';
+        } else {
+            $html .= '<li class="page-item disabled">';
+            $html .= '<span class="page-link" aria-label="Next">';
+            $html .= '<span aria-hidden="true">&raquo;</span>';
+            $html .= '</span>';
+            $html .= '</li>';
+        }
+        
+        $html .= '</ul>';
+        $html .= '</nav>';
+        
+        return $html;
+    }
+    
+    protected function buildPaginationUrl($baseUrl, $page, $searchParams = [])
+    {
+        $params = array_merge($searchParams, ['page' => $page]);
+        $queryString = http_build_query($params);
+        
+        return $baseUrl . '?' . $queryString;
+    }
+    
+    protected function renderPaginationInfo($pagination)
+    {
+        if ($pagination['total_items'] == 0) {
+            return '<div class="pagination-info text-muted">No records found</div>';
+        }
+        
+        return sprintf(
+            '<div class="pagination-info text-muted">Showing %d to %d of %d results</div>',
+            $pagination['start_item'],
+            $pagination['end_item'],
+            $pagination['total_items']
+        );
+    }
 }

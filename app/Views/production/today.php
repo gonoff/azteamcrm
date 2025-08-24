@@ -57,7 +57,7 @@
     
     <?php if (!empty($dueToday)): ?>
     <div class="card mb-3 border-danger">
-        <div class="card-header bg-danger text-white">
+        <div class="card-header card-header-danger">
             <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Due Today (<?= count($dueToday) ?> items)</h5>
         </div>
         <div class="card-body">
@@ -88,7 +88,7 @@
                             <td><?= $item->getStatusBadge() ?></td>
                             <td>
                                 <?php if ($item->order_item_status === 'pending'): ?>
-                                <button class="btn btn-sm btn-warning quick-start" data-id="<?= $item->order_item_id ?>">
+                                <button class="btn btn-sm btn-primary quick-start" data-id="<?= $item->order_item_id ?>">
                                     <i class="bi bi-play-fill"></i> Start
                                 </button>
                                 <?php elseif ($item->order_item_status === 'in_production'): ?>
@@ -108,7 +108,7 @@
     
     <?php if (!empty($dueTomorrow)): ?>
     <div class="card mb-3 border-warning">
-        <div class="card-header bg-warning">
+        <div class="card-header card-header-warning">
             <h5 class="mb-0"><i class="bi bi-clock"></i> Due Tomorrow (<?= count($dueTomorrow) ?> items)</h5>
         </div>
         <div class="card-body">
@@ -139,7 +139,7 @@
                             <td><?= $item->getStatusBadge() ?></td>
                             <td>
                                 <?php if ($item->order_item_status === 'pending'): ?>
-                                <button class="btn btn-sm btn-info quick-start" data-id="<?= $item->order_item_id ?>">
+                                <button class="btn btn-sm btn-primary quick-start" data-id="<?= $item->order_item_id ?>">
                                     <i class="bi bi-play-fill"></i> Start
                                 </button>
                                 <?php endif; ?>
@@ -155,7 +155,7 @@
     
     <?php if (!empty($startToday)): ?>
     <div class="card mb-3">
-        <div class="card-header bg-info text-white">
+        <div class="card-header card-header-info">
             <h5 class="mb-0"><i class="bi bi-calendar-plus"></i> Consider Starting Today (<?= count($startToday) ?> items)</h5>
         </div>
         <div class="card-body">
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Update button
                     button.innerHTML = '<i class="bi bi-check"></i> Started';
                     button.disabled = true;
-                    button.classList.remove('btn-warning', 'btn-info');
+                    button.classList.remove('btn-primary', 'btn-info');
                     button.classList.add('btn-success');
                 }
             } else {

@@ -43,9 +43,9 @@
                     <div class="col-md-4 text-muted">Role:</div>
                     <div class="col-md-8">
                         <?php if ($user->role === 'administrator'): ?>
-                            <span class="badge bg-danger">Administrator</span>
+                            <span class="badge badge-danger">Administrator</span>
                         <?php else: ?>
-                            <span class="badge bg-primary">Production Team</span>
+                            <span class="badge badge-primary">Production Team</span>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -54,9 +54,9 @@
                     <div class="col-md-4 text-muted">Account Status:</div>
                     <div class="col-md-8">
                         <?php if ($user->is_active): ?>
-                            <span class="badge bg-success">Active</span>
+                            <span class="badge badge-success">Active</span>
                         <?php else: ?>
-                            <span class="badge bg-secondary">Inactive</span>
+                            <span class="badge badge-secondary">Inactive</span>
                         <?php endif; ?>
                     </div>
                 </div>

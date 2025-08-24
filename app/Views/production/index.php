@@ -84,32 +84,32 @@
 <ul class="nav nav-tabs mb-3" id="productionTabs">
     <li class="nav-item">
         <a class="nav-link active" href="#" data-filter="all">
-            All Active <span class="badge bg-secondary"><?= count($productionItems) ?></span>
+            All Active <span class="badge badge-secondary"><?= count($productionItems) ?></span>
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="#" data-filter="pending">
-            Pending <span class="badge bg-warning"><?= $stats['total_pending'] ?></span>
+            Pending <span class="badge badge-warning"><?= $stats['total_pending'] ?></span>
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="#" data-filter="in_production">
-            In Production <span class="badge bg-info"><?= $stats['in_production'] ?></span>
+            In Production <span class="badge badge-info"><?= $stats['in_production'] ?></span>
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="#" data-filter="overdue">
-            Overdue <span class="badge bg-danger"><?= $stats['overdue_items'] ?></span>
+            Overdue <span class="badge badge-danger"><?= $stats['overdue_items'] ?></span>
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="#" data-filter="due_today">
-            Due Today <span class="badge bg-warning"><?= count($itemsDueToday) ?></span>
+            Due Today <span class="badge badge-warning"><?= count($itemsDueToday) ?></span>
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="#" data-filter="rush">
-            Rush Orders <span class="badge bg-danger"><?= $stats['rush_items'] ?></span>
+            Rush Orders <span class="badge badge-danger"><?= $stats['rush_items'] ?></span>
         </a>
     </li>
 </ul>
@@ -121,7 +121,7 @@
             <strong><span id="selectedCount">0</span> items selected</strong>
         </div>
         <div>
-            <button class="btn btn-sm btn-info" onclick="bulkUpdateStatus('in_production')">
+            <button class="btn btn-sm btn-primary" onclick="bulkUpdateStatus('in_production')">
                 <i class="bi bi-play-fill"></i> Mark In Production
             </button>
             <button class="btn btn-sm btn-success" onclick="bulkUpdateStatus('completed')">

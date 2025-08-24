@@ -88,11 +88,18 @@ class UserController extends Controller
         $user->setPassword($data['password']);
         $user->is_active = true;
         
-        if ($user->save()) {
-            $_SESSION['success'] = 'User created successfully';
+        // Use error handling wrapper for database operation
+        $result = $this->handleDatabaseOperation(
+            function() use ($user) {
+                return $user->save();
+            },
+            'User created successfully',
+            'Failed to create user. Please check your information and try again.'
+        );
+        
+        if ($result) {
             $this->redirect('/users');
         } else {
-            $_SESSION['error'] = 'Failed to create user';
             $this->redirect('/users/create');
         }
     }
@@ -178,11 +185,18 @@ class UserController extends Controller
             $user->setPassword($data['password']);
         }
         
-        if ($user->save()) {
-            $_SESSION['success'] = 'User updated successfully';
+        // Use error handling wrapper for database operation
+        $result = $this->handleDatabaseOperation(
+            function() use ($user) {
+                return $user->save();
+            },
+            'User updated successfully',
+            'Failed to update user. Please check your information and try again.'
+        );
+        
+        if ($result) {
             $this->redirect('/users');
         } else {
-            $_SESSION['error'] = 'Failed to update user';
             $this->redirect("/users/{$id}/edit");
         }
     }

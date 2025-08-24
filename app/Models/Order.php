@@ -10,7 +10,8 @@ class Order extends Model
     protected $primaryKey = 'order_id';
     protected $fillable = [
         'order_status', 'payment_status', 'customer_id', 'user_id',
-        'order_total', 'date_created', 'date_due', 'order_notes'
+        'order_total', 'amount_paid', 'discount_amount', 'tax_amount', 
+        'shipping_amount', 'apply_ct_tax', 'date_created', 'date_due', 'order_notes'
     ];
     
     public function getOrderItems()
@@ -31,9 +32,29 @@ class Order extends Model
         return $customer->find($this->customer_id);
     }
     
-    public function updatePaymentStatus($status)
+    public function updatePaymentStatus($status, $amountPaid = null)
     {
         $this->payment_status = $status;
+        $this->attributes['payment_status'] = $status;
+        
+        if ($amountPaid !== null) {
+            $this->amount_paid = floatval($amountPaid);
+            $this->attributes['amount_paid'] = floatval($amountPaid);
+        }
+        
+        // Auto-determine payment status based on amounts
+        $totalAmount = $this->getTotalAmount();
+        if ($this->amount_paid >= $totalAmount) {
+            $this->payment_status = 'paid';
+            $this->attributes['payment_status'] = 'paid';
+        } elseif ($this->amount_paid > 0) {
+            $this->payment_status = 'partial';
+            $this->attributes['payment_status'] = 'partial';
+        } else {
+            $this->payment_status = 'unpaid';
+            $this->attributes['payment_status'] = 'unpaid';
+        }
+        
         return $this->update();
     }
     
@@ -134,15 +155,96 @@ class Order extends Model
         return 0;
     }
     
+    public function getSubtotal()
+    {
+        // Calculate from order items (currently just order_total)
+        return floatval($this->order_total ?? 0);
+    }
+    
+    public function getTotalAmount()
+    {
+        // Subtotal + tax + shipping - discount
+        $subtotal = $this->getSubtotal();
+        $total = $subtotal + floatval($this->tax_amount ?? 0) + floatval($this->shipping_amount ?? 0) - floatval($this->discount_amount ?? 0);
+        return max(0, $total);
+    }
+    
+    public function getBalanceDue()
+    {
+        // Total amount - amount paid
+        return max(0, $this->getTotalAmount() - floatval($this->amount_paid ?? 0));
+    }
+    
     public function getOutstandingBalance()
     {
-        // Calculate outstanding balance for this specific order
-        if ($this->payment_status === 'paid') {
-            return 0;
+        // Keep for backward compatibility - now uses getBalanceDue
+        return $this->getBalanceDue();
+    }
+    
+    public function calculateConnecticutTax()
+    {
+        // Calculate Connecticut tax at 6.35% if enabled
+        if ($this->apply_ct_tax) {
+            $subtotal = $this->getSubtotal();
+            return round($subtotal * 0.0635, 2);
         }
-        // For unpaid or partial, return the full order total
-        // In future, when payments table is added, subtract payments from total
-        return floatval($this->order_total ?? 0);
+        return 0.00;
+    }
+    
+    public function updateTax()
+    {
+        // Update tax amount based on Connecticut tax setting
+        $newTaxAmount = $this->calculateConnecticutTax();
+        $this->tax_amount = $newTaxAmount;
+        $this->attributes['tax_amount'] = $newTaxAmount;
+        return $this->update();
+    }
+    
+    public function addPayment($amount, $method = null, $notes = null, $userId = null)
+    {
+        // Record payment in history table
+        $sql = "INSERT INTO order_payments (order_id, payment_amount, payment_method, payment_notes, recorded_by) 
+                VALUES (:order_id, :amount, :method, :notes, :user_id)";
+        
+        $params = [
+            'order_id' => $this->order_id,
+            'amount' => $amount,
+            'method' => $method,
+            'notes' => $notes,
+            'user_id' => $userId ?? $_SESSION['user_id']
+        ];
+        
+        $stmt = $this->db->query($sql, $params);
+        
+        if ($stmt) {
+            // Update order's amount_paid
+            $this->amount_paid = floatval($this->amount_paid ?? 0) + floatval($amount);
+            $this->attributes['amount_paid'] = $this->amount_paid;
+            
+            // Update payment status
+            $this->updatePaymentStatus($this->payment_status, $this->amount_paid);
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    public function getPaymentHistory()
+    {
+        $sql = "SELECT p.*, u.full_name as recorded_by_name 
+                FROM order_payments p 
+                LEFT JOIN users u ON p.recorded_by = u.id 
+                WHERE p.order_id = :order_id 
+                ORDER BY p.payment_date DESC";
+        
+        $stmt = $this->db->query($sql, ['order_id' => $this->order_id]);
+        
+        if ($stmt) {
+            return $stmt->fetchAll(\PDO::FETCH_OBJ);
+        }
+        
+        return [];
     }
     
     public function countDueToday()
@@ -238,5 +340,11 @@ class Order extends Model
         ];
         
         return $badges[$this->order_status] ?? '<span class="badge badge-secondary">' . ucfirst($this->order_status) . '</span>';
+    }
+    
+    public function getPaymentStatusBadge()
+    {
+        // Alias for getStatusBadge to maintain compatibility
+        return $this->getStatusBadge();
     }
 }

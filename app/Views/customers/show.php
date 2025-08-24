@@ -7,7 +7,7 @@
             <a href="/azteamcrm/customers" class="btn btn-secondary">
                 <i class="bi bi-arrow-left"></i> Back to Customers
             </a>
-            <a href="/azteamcrm/customers/<?= $customer->customer_id ?>/edit" class="btn btn-primary">
+            <a href="/azteamcrm/customers/<?= $customer->customer_id ?>/edit" class="btn btn-secondary">
                 <i class="bi bi-pencil"></i> Edit Customer
             </a>
             <?php if ($_SESSION['user_role'] === 'administrator' && $customer->getTotalOrders() == 0): ?>
@@ -116,7 +116,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Order History</h5>
-                    <a href="/azteamcrm/orders/create?customer_id=<?= $customer->customer_id ?>" class="btn btn-sm btn-success">
+                    <a href="/azteamcrm/orders/create?customer_id=<?= $customer->customer_id ?>" class="btn btn-sm btn-primary">
                         <i class="bi bi-plus"></i> New Order
                     </a>
                 </div>

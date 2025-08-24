@@ -687,6 +687,40 @@ print_r($array);
 die(); // Stop execution
 ```
 
+## UI/UX Color System (v2.0 - Semantic Colors)
+
+### Design Philosophy
+The application uses a semantic color system to improve usability and reduce cognitive load. Red is reserved ONLY for destructive/critical actions. Blue handles primary actions. Neutrals carry layout weight.
+
+### Color Palette
+- **Primary (Blue)**: `#2563EB` - Main CTAs like "Add New", "Save", "Create", "Start Production"
+- **Secondary (Gray)**: `#6B7280` - Neutral actions like "Edit", "View", "Back"
+- **Danger (Red)**: `#DC2626` - ONLY for delete, cancel order, and critical alerts
+- **Success (Green)**: `#16A34A` - Completed items, paid status, success messages
+- **Warning (Amber)**: `#F59E0B` - Pending items, partial payments, due soon
+- **Info (Teal)**: `#0891B2` - In-production items, informational messages
+- **Brand Accent**: `#E5192B` - AZTEAM red used sparingly for navigation active states
+
+### Button Usage Guidelines
+- **btn-primary** (Blue): Add New, Save, Create, Submit, Start Production, Export
+- **btn-secondary** (Gray): Edit, View, Back, Cancel (non-destructive)
+- **btn-danger** (Red): Delete, Cancel Order (destructive actions only)
+- **btn-success** (Green): Complete, Mark as Paid, Record Payment
+- **btn-warning** (Amber): Rarely used, special attention actions
+
+### Status Badge Semantics
+- **Paid/Completed**: Green badge with light green background
+- **Unpaid/Overdue**: Red badge with light red background
+- **Pending/Partial**: Amber badge with light amber background
+- **In Production**: Teal/info badge with light blue background
+- **Rush Order**: Red or amber badge with urgency icon
+
+### Implementation Notes
+- CSS variables defined in `/assets/css/app.css`
+- Bootstrap classes overridden with semantic colors
+- Focus states use primary blue for accessibility
+- Dark mode support included (future enhancement)
+
 ## Security Considerations
 - All user inputs sanitized via `Controller::sanitize()`
 - Prepared statements for all database queries

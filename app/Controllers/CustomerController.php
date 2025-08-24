@@ -16,10 +16,32 @@ class CustomerController extends Controller
     public function index()
     {
         $customer = new Customer();
-        $customers = $customer->findAll([], 'full_name ASC');
+        
+        // Get pagination parameters
+        $page = intval($_GET['page'] ?? 1);
+        $perPage = 20;
+        $search = trim($_GET['search'] ?? '');
+        
+        // Get paginated results with search
+        if (!empty($search)) {
+            $result = $customer->searchAndPaginate(
+                $search,
+                ['full_name', 'company_name', 'phone_number', 'email'],
+                $page,
+                $perPage,
+                [],
+                'full_name ASC'
+            );
+        } else {
+            $result = $customer->paginate($page, $perPage, [], 'full_name ASC');
+        }
         
         $this->view('customers/index', [
-            'customers' => $customers,
+            'customers' => $result['data'],
+            'pagination' => $result['pagination'],
+            'search_term' => $search,
+            'pagination_html' => $this->renderPagination($result['pagination'], '/azteamcrm/customers', ['search' => $search]),
+            'pagination_info' => $this->renderPaginationInfo($result['pagination']),
             'title' => 'Customer Management',
             'csrf_token' => $this->csrf()
         ]);
@@ -74,18 +96,19 @@ class CustomerController extends Controller
         $data['state'] = strtoupper($data['state']);
         
         // Validation
-        $errors = $this->validate($data, [
+        $validationRules = [
             'full_name' => 'required|min:2',
             'address_line_1' => 'required',
             'city' => 'required',
             'state' => 'required|max:2',
             'zip_code' => 'required'
-        ]);
+        ];
         
-        // Validate email if provided
-        if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            $errors['email'] = 'Please provide a valid email address';
+        if (!empty($data['email'])) {
+            $validationRules['email'] = 'email';
         }
+        
+        $errors = $this->validate($data, $validationRules);
         
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
@@ -134,11 +157,17 @@ class CustomerController extends Controller
             $data['phone_number'] = preg_replace('/[^0-9]/', '', $data['phone_number']);
         }
         
+        // Use error handling wrapper for database operation
         $customer = new Customer();
-        $newCustomer = $customer->create($data);
+        $newCustomer = $this->handleDatabaseOperation(
+            function() use ($customer, $data) {
+                return $customer->create($data);
+            },
+            'Customer created successfully.',
+            'Failed to create customer. Please check your information and try again.'
+        );
+        
         if ($newCustomer) {
-            $_SESSION['success'] = 'Customer created successfully.';
-            
             // Check if there's a return URL
             $returnUrl = $_POST['return_url'] ?? null;
             if ($returnUrl) {
@@ -153,7 +182,6 @@ class CustomerController extends Controller
                 $this->redirect('/customers');
             }
         } else {
-            $_SESSION['error'] = 'Failed to create customer.';
             $_SESSION['old'] = $data;
             
             // Preserve return URL on error
@@ -288,12 +316,19 @@ class CustomerController extends Controller
             $data['phone_number'] = preg_replace('/[^0-9]/', '', $data['phone_number']);
         }
         
-        $customer->fill($data);
-        if ($customer->update()) {
-            $_SESSION['success'] = 'Customer updated successfully.';
+        // Use error handling wrapper for database operation
+        $result = $this->handleDatabaseOperation(
+            function() use ($customer, $data) {
+                $customer->fill($data);
+                return $customer->update();
+            },
+            'Customer updated successfully.',
+            'Failed to update customer. Please check your information and try again.'
+        );
+        
+        if ($result) {
             $this->redirect('/customers/' . $id);
         } else {
-            $_SESSION['error'] = 'Failed to update customer.';
             $_SESSION['old'] = $data;
             $this->redirect('/customers/' . $id . '/edit');
         }
@@ -320,11 +355,14 @@ class CustomerController extends Controller
             return;
         }
         
-        if ($customer->delete()) {
-            $_SESSION['success'] = 'Customer deleted successfully.';
-        } else {
-            $_SESSION['error'] = 'Failed to delete customer.';
-        }
+        // Use error handling wrapper for database operation
+        $this->handleDatabaseOperation(
+            function() use ($customer) {
+                return $customer->delete();
+            },
+            'Customer deleted successfully.',
+            'Failed to delete customer. It may be referenced by other records.'
+        );
         
         $this->redirect('/customers');
     }

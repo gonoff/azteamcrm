@@ -3,7 +3,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h2">Materials Report</h1>
     <div>
-        <button class="btn btn-success" onclick="exportToCSV()">
+        <button class="btn btn-primary" onclick="exportToCSV()">
             <i class="bi bi-download"></i> Export to CSV
         </button>
         <a href="/azteamcrm/production" class="btn btn-secondary">

@@ -14,15 +14,37 @@ class OrderController extends Controller
         $this->requireAuth();
         
         $order = new Order();
-        $orders = $order->findAll([], 'date_created DESC');
+        
+        // Get pagination parameters
+        $page = intval($_GET['page'] ?? 1);
+        $perPage = 20;
+        $search = trim($_GET['search'] ?? '');
+        
+        // Get paginated results with search
+        if (!empty($search)) {
+            $result = $order->searchAndPaginate(
+                $search,
+                ['order_notes'],
+                $page,
+                $perPage,
+                [],
+                'date_created DESC'
+            );
+        } else {
+            $result = $order->paginate($page, $perPage, [], 'date_created DESC');
+        }
         
         // Load customer data for each order
-        foreach ($orders as $ord) {
+        foreach ($result['data'] as $ord) {
             $ord->customer = $ord->getCustomer();
         }
         
         $this->view('orders/index', [
-            'orders' => $orders,
+            'orders' => $result['data'],
+            'pagination' => $result['pagination'],
+            'search_term' => $search,
+            'pagination_html' => $this->renderPagination($result['pagination'], '/azteamcrm/orders', ['search' => $search]),
+            'pagination_info' => $this->renderPaginationInfo($result['pagination']),
             'title' => 'Orders',
             'csrf_token' => $this->csrf()
         ]);
@@ -129,35 +151,41 @@ class OrderController extends Controller
         
         $this->verifyCsrf();
         
-        $data = $this->sanitize($_POST);
-        
-        $errors = $this->validate($data, [
+        // Validate and sanitize input
+        $data = $this->validateAndSanitize($_POST, [
             'customer_id' => 'required',
             'date_due' => 'required'
         ]);
         
-        if (!empty($errors)) {
-            $_SESSION['errors'] = $errors;
-            $_SESSION['old_input'] = $data;
+        if (!$data) {
             $this->redirect('/orders/create');
+            return;
         }
         
-        // Set order_total to 0.00 for new orders (will be calculated from items)
+        // New orders always start with these defaults
         $data['order_total'] = 0.00;
+        $data['amount_paid'] = 0.00;
+        $data['discount_amount'] = 0.00;
+        $data['tax_amount'] = 0.00;
+        $data['shipping_amount'] = 0.00;
         $data['user_id'] = $_SESSION['user_id'];
-        // Order status is always pending for new orders (will sync from items)
         $data['order_status'] = 'pending';
-        $data['payment_status'] = $data['payment_status'] ?? 'unpaid';
+        $data['payment_status'] = 'unpaid';  // Always unpaid for new orders
         $data['date_created'] = date('Y-m-d H:i:s');
         
+        // Use error handling wrapper for database operation
         $order = new Order();
-        $newOrder = $order->create($data);
+        $newOrder = $this->handleDatabaseOperation(
+            function() use ($order, $data) {
+                return $order->create($data);
+            },
+            'Order created successfully!',
+            'Failed to create order. Please check your information and try again.'
+        );
         
         if ($newOrder) {
-            $_SESSION['success'] = 'Order created successfully!';
             $this->redirect('/orders/' . $newOrder->order_id);
         } else {
-            $_SESSION['error'] = 'Failed to create order.';
             $this->redirect('/orders/create');
         }
     }
@@ -227,17 +255,15 @@ class OrderController extends Controller
             $this->redirect('/orders');
         }
         
-        $data = $this->sanitize($_POST);
-        
-        $errors = $this->validate($data, [
+        // Validate and sanitize input
+        $data = $this->validateAndSanitize($_POST, [
             'customer_id' => 'required',
             'date_due' => 'required'
         ]);
         
-        if (!empty($errors)) {
-            $_SESSION['errors'] = $errors;
-            $_SESSION['old_input'] = $data;
+        if (!$data) {
             $this->redirect('/orders/' . $id . '/edit');
+            return;
         }
         
         // Don't allow manual order_total updates - it's calculated from items
@@ -251,13 +277,31 @@ class OrderController extends Controller
             $data['payment_status'] = $orderData->payment_status;
         }
         
-        $orderData->fill($data);
+        // Handle Connecticut tax checkbox
+        $data['apply_ct_tax'] = isset($data['apply_ct_tax']) ? 1 : 0;
         
-        if ($orderData->update()) {
-            $_SESSION['success'] = 'Order updated successfully!';
+        // Calculate tax amount based on checkbox
+        if ($data['apply_ct_tax']) {
+            // Calculate 6.35% of the order total
+            $subtotal = floatval($orderData->order_total ?? 0);
+            $data['tax_amount'] = round($subtotal * 0.0635, 2);
+        } else {
+            $data['tax_amount'] = 0.00;
+        }
+        
+        // Use error handling wrapper for database operation
+        $result = $this->handleDatabaseOperation(
+            function() use ($orderData, $data) {
+                $orderData->fill($data);
+                return $orderData->update();
+            },
+            'Order updated successfully!',
+            'Failed to update order. Please check your information and try again.'
+        );
+        
+        if ($result) {
             $this->redirect('/orders/' . $id);
         } else {
-            $_SESSION['error'] = 'Failed to update order.';
             $this->redirect('/orders/' . $id . '/edit');
         }
     }
@@ -270,11 +314,20 @@ class OrderController extends Controller
         $order = new Order();
         $orderData = $order->find($id);
         
-        if ($orderData && $orderData->delete()) {
-            $_SESSION['success'] = 'Order deleted successfully!';
-        } else {
-            $_SESSION['error'] = 'Failed to delete order.';
+        if (!$orderData) {
+            $this->setError('Order not found.');
+            $this->redirect('/orders');
+            return;
         }
+        
+        // Use error handling wrapper for database operation
+        $this->handleDatabaseOperation(
+            function() use ($orderData) {
+                return $orderData->delete();
+            },
+            'Order deleted successfully!',
+            'Failed to delete order. It may be referenced by other records.'
+        );
         
         $this->redirect('/orders');
     }
@@ -293,17 +346,22 @@ class OrderController extends Controller
         $orderData = $order->find($id);
         
         if (!$orderData) {
+            $this->setError('Order not found.');
             $this->redirect('/orders');
+            return;
         }
         
         $status = $this->sanitize($_POST['payment_status'] ?? '');
         $paidAmount = floatval($_POST['paid_amount'] ?? 0);
         
-        if ($orderData->updatePaymentStatus($status)) {
-            $_SESSION['success'] = 'Payment status updated successfully!';
-        } else {
-            $_SESSION['error'] = 'Failed to update payment status.';
-        }
+        // Use error handling wrapper for database operation
+        $this->handleDatabaseOperation(
+            function() use ($orderData, $status) {
+                return $orderData->updatePaymentStatus($status);
+            },
+            'Payment status updated successfully!',
+            'Failed to update payment status. Please try again.'
+        );
         
         $this->redirect('/orders/' . $id);
     }
@@ -329,6 +387,41 @@ class OrderController extends Controller
             $_SESSION['success'] = 'Order has been cancelled.';
         } else {
             $_SESSION['error'] = 'Failed to cancel order.';
+        }
+        
+        $this->redirect('/orders/' . $id);
+    }
+    
+    public function processPayment($id)
+    {
+        $this->requireAuth();
+        $this->verifyCsrf();
+        
+        if (!$this->isPost()) {
+            $this->redirect('/orders/' . $id);
+        }
+        
+        $order = new Order();
+        $orderData = $order->find($id);
+        
+        if (!$orderData) {
+            $this->redirect('/orders');
+        }
+        
+        $paymentAmount = floatval($_POST['payment_amount'] ?? 0);
+        $paymentMethod = $this->sanitize($_POST['payment_method'] ?? '');
+        $paymentNotes = $this->sanitize($_POST['payment_notes'] ?? '');
+        
+        if ($paymentAmount <= 0) {
+            $_SESSION['error'] = 'Invalid payment amount.';
+            $this->redirect('/orders/' . $id);
+        }
+        
+        // Add payment to history and update order
+        if ($orderData->addPayment($paymentAmount, $paymentMethod, $paymentNotes)) {
+            $_SESSION['success'] = 'Payment of $' . number_format($paymentAmount, 2) . ' recorded successfully.';
+        } else {
+            $_SESSION['error'] = 'Failed to process payment.';
         }
         
         $this->redirect('/orders/' . $id);

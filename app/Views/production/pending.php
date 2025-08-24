@@ -65,18 +65,18 @@
                             <td>
                                 <?= date('M d, Y', strtotime($item->date_due)) ?>
                                 <?php if ($isOverdue): ?>
-                                    <span class="badge bg-danger">OVERDUE</span>
+                                    <span class="badge badge-danger">OVERDUE</span>
                                 <?php elseif ($isDueSoon): ?>
-                                    <span class="badge bg-warning">DUE SOON</span>
+                                    <span class="badge badge-warning">DUE SOON</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-info start-production" 
+                                <button class="btn btn-sm btn-primary start-production" 
                                         data-id="<?= $item->order_item_id ?>">
                                     <i class="bi bi-play-fill"></i> Start Production
                                 </button>
                                 <a href="/azteamcrm/order-items/<?= $item->order_item_id ?>/edit" 
-                                   class="btn btn-sm btn-outline-primary">
+                                   class="btn btn-sm btn-outline-secondary">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                             </td>

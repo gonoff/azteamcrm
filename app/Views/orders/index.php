@@ -2,7 +2,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h2">Order Management</h1>
-    <a href="/azteamcrm/orders/create" class="btn btn-success">
+    <a href="/azteamcrm/orders/create" class="btn btn-primary">
         <i class="bi bi-plus-circle"></i> New Order
     </a>
 </div>
@@ -23,12 +23,38 @@
     <?php unset($_SESSION['error']); ?>
 <?php endif; ?>
 
-<div class="card">
+<!-- Search Bar -->
+<div class="card mb-3">
     <div class="card-body">
-        <div class="mb-3">
-            <input type="text" id="searchInput" class="form-control" placeholder="Search orders by client name, phone, or order number...">
-        </div>
-        
+        <form method="GET" action="/azteamcrm/orders" class="row g-3">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" 
+                           class="form-control" 
+                           name="search" 
+                           value="<?= htmlspecialchars($search_term ?? '') ?>"
+                           placeholder="Search orders by notes, customer info...">
+                    <button class="btn btn-primary" type="submit">Search</button>
+                    <?php if (!empty($search_term)): ?>
+                    <a href="/azteamcrm/orders" class="btn btn-secondary">Clear</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results Info -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <?= $pagination_info ?? '' ?>
+    <?php if (!empty($search_term)): ?>
+    <small class="text-muted">Search: "<?= htmlspecialchars($search_term) ?>"</small>
+    <?php endif; ?>
+</div>
+
+<div class="card">
+    <div class="card-body">        
         <div class="table-responsive">
             <table class="table table-hover searchable-table">
                 <thead>
@@ -55,7 +81,7 @@
                                 <td>
                                     <strong>#<?= $order->order_id ?></strong>
                                     <?php if ($order->isRushOrder()): ?>
-                                        <span class="badge bg-danger ms-1">RUSH</span>
+                                        <span class="badge badge-danger ms-1">RUSH</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -75,9 +101,9 @@
                                 <td>
                                     <?= date('M d, Y', strtotime($order->date_due)) ?>
                                     <?php if ($order->isOverdue() && $order->payment_status !== 'paid'): ?>
-                                        <span class="badge bg-danger ms-1">Overdue</span>
+                                        <span class="badge badge-danger ms-1">Overdue</span>
                                     <?php elseif ($order->isDueSoon() && $order->payment_status !== 'paid'): ?>
-                                        <span class="badge bg-warning ms-1">Due Soon</span>
+                                        <span class="badge badge-warning ms-1">Due Soon</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>$<?= number_format($order->order_total, 2) ?></td>
@@ -86,11 +112,11 @@
                                 </td>
                                 <td>
                                     <?php if ($order->payment_status === 'paid'): ?>
-                                        <span class="badge bg-success">Paid</span>
+                                        <span class="badge badge-success">Paid</span>
                                     <?php elseif ($order->payment_status === 'partial'): ?>
-                                        <span class="badge bg-warning">Partial</span>
+                                        <span class="badge badge-warning">Partial</span>
                                     <?php else: ?>
-                                        <span class="badge bg-danger">Unpaid</span>
+                                        <span class="badge badge-danger">Unpaid</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -125,6 +151,14 @@
         </div>
     </div>
 </div>
+
+<!-- Pagination Controls -->
+<?php if (isset($pagination_html)): ?>
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <?= $pagination_info ?? '' ?>
+    <?= $pagination_html ?? '' ?>
+</div>
+<?php endif; ?>
 
 <!-- Delete Order Modal -->
 <div class="modal fade" id="deleteOrderModal" tabindex="-1">

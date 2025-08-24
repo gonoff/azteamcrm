@@ -78,7 +78,7 @@
 <div class="row mt-4">
     <div class="col-md-12">
         <div class="card">
-            <div class="card-header bg-danger text-white">
+            <div class="card-header card-header-danger">
                 <h5 class="mb-0">Urgent Orders</h5>
             </div>
             <div class="card-body">
@@ -106,7 +106,7 @@
                                     <?= $order->getStatusBadge() ?>
                                 </td>
                                 <td>
-                                    <a href="/azteamcrm/orders/<?= $order->order_id ?>" class="btn btn-sm btn-primary">View</a>
+                                    <a href="/azteamcrm/orders/<?= $order->order_id ?>" class="btn btn-sm btn-secondary">View</a>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -166,7 +166,7 @@
                 <?php endif; ?>
                 
                 <div class="mt-3">
-                    <a href="/azteamcrm/orders/create" class="btn btn-success">
+                    <a href="/azteamcrm/orders/create" class="btn btn-primary">
                         <i class="bi bi-plus-circle"></i> New Order
                     </a>
                 </div>

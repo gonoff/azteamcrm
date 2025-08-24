@@ -18,8 +18,49 @@ class ProductionController extends Controller
     {
         $orderItem = new OrderItem();
         
-        // Get all active production items using model method
-        $productionItems = $orderItem->getProductionItems();
+        // Get pagination parameters
+        $page = intval($_GET['page'] ?? 1);
+        $perPage = 50; // Show more items on production dashboard
+        $search = trim($_GET['search'] ?? '');
+        
+        // Get paginated production items
+        if (!empty($search)) {
+            $result = $orderItem->searchAndPaginate(
+                $search,
+                ['product_type', 'product_description', 'note_item'],
+                $page,
+                $perPage,
+                ['order_item_status' => ['pending', 'in_production']], // Active items only
+                'date_due ASC'
+            );
+            $productionItems = $result['data'];
+        } else {
+            // Get all active production items using model method
+            $productionItems = $orderItem->getProductionItems();
+            
+            // Convert to paginated format for consistency
+            $totalItems = count($productionItems);
+            $totalPages = ceil($totalItems / $perPage);
+            $start = ($page - 1) * $perPage;
+            $paginatedItems = array_slice($productionItems, $start, $perPage);
+            
+            $result = [
+                'data' => $paginatedItems,
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'total_items' => $totalItems,
+                    'total_pages' => $totalPages,
+                    'has_previous' => $page > 1,
+                    'has_next' => $page < $totalPages,
+                    'previous_page' => $page > 1 ? $page - 1 : null,
+                    'next_page' => $page < $totalPages ? $page + 1 : null,
+                    'start_item' => $totalItems > 0 ? $start + 1 : 0,
+                    'end_item' => min($start + $perPage, $totalItems)
+                ]
+            ];
+            $productionItems = $paginatedItems;
+        }
         
         // Calculate statistics from the retrieved items
         $stats = [
@@ -66,6 +107,10 @@ class ProductionController extends Controller
             'stats' => $stats,
             'productionItems' => $productionItems,
             'itemsDueToday' => $itemsDueToday,
+            'pagination' => $result['pagination'],
+            'search_term' => $search,
+            'pagination_html' => $this->renderPagination($result['pagination'], '/azteamcrm/production', ['search' => $search]),
+            'pagination_info' => $this->renderPaginationInfo($result['pagination']),
             'csrf_token' => $this->csrf()
         ]);
     }

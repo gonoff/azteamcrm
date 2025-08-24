@@ -213,4 +213,139 @@ abstract class Model
     {
         return $this->attributes;
     }
+    
+    /**
+     * Pagination Support Methods
+     */
+    public function paginate($page = 1, $perPage = 20, $conditions = [], $orderBy = null)
+    {
+        $page = max(1, intval($page));
+        $perPage = max(1, min(100, intval($perPage))); // Limit max per page to 100
+        $offset = ($page - 1) * $perPage;
+        
+        // Build base query
+        $sql = "SELECT * FROM {$this->table}";
+        $params = [];
+        
+        if (!empty($conditions)) {
+            $whereClause = [];
+            foreach ($conditions as $field => $value) {
+                $whereClause[] = "{$field} = :{$field}";
+                $params[$field] = $value;
+            }
+            $sql .= " WHERE " . implode(" AND ", $whereClause);
+        }
+        
+        if ($orderBy) {
+            $sql .= " ORDER BY {$orderBy}";
+        }
+        
+        $sql .= " LIMIT {$perPage} OFFSET {$offset}";
+        
+        $stmt = $this->db->query($sql, $params);
+        
+        $items = [];
+        if ($stmt) {
+            $items = $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+        }
+        
+        // Get total count for pagination info
+        $totalCount = $this->count($conditions);
+        $totalPages = ceil($totalCount / $perPage);
+        
+        return [
+            'data' => $items,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total_items' => $totalCount,
+                'total_pages' => $totalPages,
+                'has_previous' => $page > 1,
+                'has_next' => $page < $totalPages,
+                'previous_page' => $page > 1 ? $page - 1 : null,
+                'next_page' => $page < $totalPages ? $page + 1 : null,
+                'start_item' => $totalCount > 0 ? $offset + 1 : 0,
+                'end_item' => min($offset + $perPage, $totalCount)
+            ]
+        ];
+    }
+    
+    public function searchAndPaginate($searchTerm, $searchFields, $page = 1, $perPage = 20, $conditions = [], $orderBy = null)
+    {
+        $page = max(1, intval($page));
+        $perPage = max(1, min(100, intval($perPage)));
+        $offset = ($page - 1) * $perPage;
+        
+        // Build search query
+        $sql = "SELECT * FROM {$this->table}";
+        $params = [];
+        $whereConditions = [];
+        
+        // Add regular conditions
+        if (!empty($conditions)) {
+            foreach ($conditions as $field => $value) {
+                $whereConditions[] = "{$field} = :{$field}";
+                $params[$field] = $value;
+            }
+        }
+        
+        // Add search conditions
+        if (!empty($searchTerm) && !empty($searchFields)) {
+            $searchConditions = [];
+            foreach ($searchFields as $field) {
+                $searchConditions[] = "{$field} LIKE :search_{$field}";
+                $params["search_{$field}"] = '%' . $searchTerm . '%';
+            }
+            $whereConditions[] = '(' . implode(' OR ', $searchConditions) . ')';
+        }
+        
+        if (!empty($whereConditions)) {
+            $sql .= " WHERE " . implode(' AND ', $whereConditions);
+        }
+        
+        if ($orderBy) {
+            $sql .= " ORDER BY {$orderBy}";
+        }
+        
+        $sql .= " LIMIT {$perPage} OFFSET {$offset}";
+        
+        $stmt = $this->db->query($sql, $params);
+        
+        $items = [];
+        if ($stmt) {
+            $items = $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+        }
+        
+        // Get total count with search
+        $countSql = "SELECT COUNT(*) as total FROM {$this->table}";
+        if (!empty($whereConditions)) {
+            $countSql .= " WHERE " . implode(' AND ', $whereConditions);
+        }
+        
+        $countStmt = $this->db->query($countSql, $params);
+        $totalCount = 0;
+        if ($countStmt) {
+            $result = $countStmt->fetch(\PDO::FETCH_ASSOC);
+            $totalCount = $result['total'] ?? 0;
+        }
+        
+        $totalPages = ceil($totalCount / $perPage);
+        
+        return [
+            'data' => $items,
+            'search_term' => $searchTerm,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total_items' => $totalCount,
+                'total_pages' => $totalPages,
+                'has_previous' => $page > 1,
+                'has_next' => $page < $totalPages,
+                'previous_page' => $page > 1 ? $page - 1 : null,
+                'next_page' => $page < $totalPages ? $page + 1 : null,
+                'start_item' => $totalCount > 0 ? $offset + 1 : 0,
+                'end_item' => min($offset + $perPage, $totalCount)
+            ]
+        ];
+    }
 }

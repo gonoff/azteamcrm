@@ -294,4 +294,59 @@ class OrderItemController extends Controller
             $this->json(['success' => false, 'message' => 'Failed to update status']);
         }
     }
+    
+    public function updateInline($id)
+    {
+        $this->requireAuth();
+        $this->verifyCsrf();
+        
+        if (!$this->isPost()) {
+            $this->json(['success' => false, 'message' => 'Invalid request']);
+            return;
+        }
+        
+        $orderItem = new OrderItem();
+        $itemData = $orderItem->find($id);
+        
+        if (!$itemData) {
+            $this->json(['success' => false, 'message' => 'Item not found']);
+            return;
+        }
+        
+        $field = $this->sanitize($_POST['field'] ?? '');
+        $value = $this->sanitize($_POST['value'] ?? '');
+        
+        // Validate field is allowed for inline editing
+        $allowedFields = ['quantity', 'unit_price', 'product_description', 'order_item_status'];
+        if (!in_array($field, $allowedFields)) {
+            $this->json(['success' => false, 'message' => 'Field not editable']);
+            return;
+        }
+        
+        // Update the field
+        $itemData->$field = $value;
+        $itemData->attributes[$field] = $value;
+        
+        if ($itemData->update()) {
+            // Recalculate order total if price/quantity changed
+            if (in_array($field, ['quantity', 'unit_price'])) {
+                $order = $itemData->getOrder();
+                $order->calculateTotal();
+            }
+            
+            // Sync order status if item status changed
+            if ($field === 'order_item_status') {
+                $order = $itemData->getOrder();
+                $order->syncStatusFromItems();
+            }
+            
+            $this->json([
+                'success' => true,
+                'message' => 'Item updated successfully',
+                'new_total' => $itemData->getOrder()->order_total
+            ]);
+        } else {
+            $this->json(['success' => false, 'message' => 'Failed to update item']);
+        }
+    }
 }
