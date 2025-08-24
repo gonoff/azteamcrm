@@ -70,6 +70,15 @@
                     </div>
                     <?php endif; ?>
                     
+                    <?php if ($customer->email): ?>
+                    <div class="mb-3">
+                        <strong>Email:</strong><br>
+                        <a href="mailto:<?= htmlspecialchars($customer->email) ?>">
+                            <?= htmlspecialchars($customer->email) ?>
+                        </a>
+                    </div>
+                    <?php endif; ?>
+                    
                     <div class="mb-3">
                         <strong>Status:</strong><br>
                         <?= $customer->getStatusBadge() ?>
@@ -107,7 +116,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Order History</h5>
-                    <a href="/azteamcrm/orders/create" class="btn btn-sm btn-success">
+                    <a href="/azteamcrm/orders/create?customer_id=<?= $customer->customer_id ?>" class="btn btn-sm btn-success">
                         <i class="bi bi-plus"></i> New Order
                     </a>
                 </div>
@@ -115,7 +124,7 @@
                     <?php if (empty($orders)): ?>
                         <div class="alert alert-info mb-0">
                             <i class="bi bi-info-circle"></i> No orders found for this customer.
-                            <a href="/azteamcrm/orders/create" class="alert-link">Create the first order</a>
+                            <a href="/azteamcrm/orders/create?customer_id=<?= $customer->customer_id ?>" class="alert-link">Create the first order</a>
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">

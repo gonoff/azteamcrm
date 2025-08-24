@@ -55,6 +55,9 @@ class UserController extends Controller
             'password_confirm' => $_POST['password_confirm'] ?? ''
         ];
         
+        // Apply title case to full name
+        $data['full_name'] = $this->toTitleCase($data['full_name']);
+        
         $errors = $this->validateUserData($data, true);
         
         if (!empty($errors)) {
@@ -138,6 +141,9 @@ class UserController extends Controller
             'role' => $this->sanitize($_POST['role'] ?? ''),
             'password' => $_POST['password'] ?? ''
         ];
+        
+        // Apply title case to full name
+        $data['full_name'] = $this->toTitleCase($data['full_name']);
         
         $errors = $this->validateUserData($data, false);
         

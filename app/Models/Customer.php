@@ -11,7 +11,7 @@ class Customer extends Model
     protected $fillable = [
         'customer_status', 'full_name', 'company_name', 
         'address_line_1', 'address_line_2', 'city', 
-        'state', 'zip_code', 'phone_number'
+        'state', 'zip_code', 'phone_number', 'email'
     ];
     
     public function getOrders()
@@ -126,5 +126,69 @@ class Customer extends Model
         }
         
         return [];
+    }
+    
+    public function isDuplicate($fullName, $phoneNumber = null, $excludeId = null)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} 
+                WHERE LOWER(REPLACE(full_name, ' ', '')) = LOWER(REPLACE(:full_name, ' ', ''))";
+        
+        $params = ['full_name' => $fullName];
+        
+        // Include phone number in duplicate check if provided
+        if ($phoneNumber) {
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phoneNumber);
+            if ($cleanPhone) {
+                $sql .= " OR (phone_number IS NOT NULL AND REPLACE(phone_number, ' ', '') = :phone)";
+                $params['phone'] = $cleanPhone;
+            }
+        }
+        
+        // Exclude current record when updating
+        if ($excludeId) {
+            $sql = "SELECT COUNT(*) as count FROM {$this->table} 
+                    WHERE (LOWER(REPLACE(full_name, ' ', '')) = LOWER(REPLACE(:full_name, ' ', ''))";
+            if ($phoneNumber) {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $phoneNumber);
+                if ($cleanPhone) {
+                    $sql .= " OR (phone_number IS NOT NULL AND REPLACE(phone_number, ' ', '') = :phone)";
+                    $params['phone'] = $cleanPhone;
+                }
+            }
+            $sql .= ") AND customer_id != :exclude_id";
+            $params['exclude_id'] = $excludeId;
+        }
+        
+        $stmt = $this->db->query($sql, $params);
+        if ($stmt) {
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $result['count'] > 0;
+        }
+        return false;
+    }
+    
+    public function findDuplicate($fullName, $phoneNumber = null)
+    {
+        $sql = "SELECT customer_id, full_name, company_name, phone_number 
+                FROM {$this->table} 
+                WHERE LOWER(REPLACE(full_name, ' ', '')) = LOWER(REPLACE(:full_name, ' ', ''))";
+        
+        $params = ['full_name' => $fullName];
+        
+        if ($phoneNumber) {
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phoneNumber);
+            if ($cleanPhone) {
+                $sql .= " OR (phone_number IS NOT NULL AND REPLACE(phone_number, ' ', '') = :phone)";
+                $params['phone'] = $cleanPhone;
+            }
+        }
+        
+        $sql .= " LIMIT 1";
+        
+        $stmt = $this->db->query($sql, $params);
+        if ($stmt) {
+            return $stmt->fetch(\PDO::FETCH_OBJ);
+        }
+        return null;
     }
 }

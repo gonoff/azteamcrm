@@ -495,12 +495,34 @@ $this->view('folder/file', $data);   // Render view
 // Input sanitization
 $clean = $this->sanitize($input);
 
+// Title case formatting (for names)
+$name = $this->toTitleCase($input);  // Converts to title case with special handling
+// Handles: McDonald, O'Brien, Portuguese names (de, da, do), etc.
+
 // Request checks
 $this->isPost();                     // Check if POST request
 $this->isGet();                      // Check if GET request
 ```
 
 ## Business Domain Rules
+
+### Data Formatting Standards
+- **Name Formatting**: All customer and user names are automatically converted to title case
+  - Applied on create and update operations
+  - Handles special cases: McDonald, MacDonald, O'Brien, O'Connor
+  - Preserves lowercase articles: de, da, do, dos, das, van, von (except at start)
+  - Example: "JOHN MCDONALD" → "John McDonald"
+  - Example: "maria da silva" → "Maria da Silva"
+- **Location Formatting**:
+  - **City names**: Automatically converted to title case
+    - Example: "NEW YORK" → "New York", "los angeles" → "Los Angeles"
+  - **State codes**: Automatically converted to uppercase (US standard)
+    - Example: "ca" → "CA", "ny" → "NY"
+- **Database update script**: Available at `/public/run_title_case_update.php` (one-time use)
+  - Updates all existing customer names, company names, and cities to title case
+  - Ensures all state codes are uppercase
+  - Handles special name cases (McDonald, O'Brien, etc.)
+  - Delete after running for security
 
 ### Order Management
 - **Order Status Synchronization** (NEW):

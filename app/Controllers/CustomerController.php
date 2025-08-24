@@ -59,8 +59,19 @@ class CustomerController extends Controller
             'city' => $this->sanitize($_POST['city']),
             'state' => $this->sanitize($_POST['state']),
             'zip_code' => $this->sanitize($_POST['zip_code']),
-            'phone_number' => $this->sanitize($_POST['phone_number'] ?? '')
+            'phone_number' => $this->sanitize($_POST['phone_number'] ?? ''),
+            'email' => $this->sanitize($_POST['email'] ?? '')
         ];
+        
+        // Apply title case to names and city
+        $data['full_name'] = $this->toTitleCase($data['full_name']);
+        if (!empty($data['company_name'])) {
+            $data['company_name'] = $this->toTitleCase($data['company_name']);
+        }
+        $data['city'] = $this->toTitleCase($data['city']);
+        
+        // Keep state uppercase (standard for US state codes)
+        $data['state'] = strtoupper($data['state']);
         
         // Validation
         $errors = $this->validate($data, [
@@ -71,11 +82,44 @@ class CustomerController extends Controller
             'zip_code' => 'required'
         ]);
         
+        // Validate email if provided
+        if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Please provide a valid email address';
+        }
+        
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             $_SESSION['old'] = $data;
             
             // Preserve return URL on validation error
+            $returnUrl = $_POST['return_url'] ?? null;
+            $redirectUrl = '/customers/create';
+            if ($returnUrl) {
+                $redirectUrl .= '?return_url=' . urlencode($returnUrl);
+            }
+            $this->redirect($redirectUrl);
+            return;
+        }
+        
+        // Check for duplicate customer
+        $customer = new Customer();
+        if ($customer->isDuplicate($data['full_name'], $data['phone_number'])) {
+            $duplicate = $customer->findDuplicate($data['full_name'], $data['phone_number']);
+            
+            $errorMsg = "A customer with this name already exists.";
+            if ($duplicate) {
+                $errorMsg .= " (Customer #" . $duplicate->customer_id . ": " . 
+                             $duplicate->full_name;
+                if ($duplicate->company_name) {
+                    $errorMsg .= " - " . $duplicate->company_name;
+                }
+                $errorMsg .= ")";
+            }
+            
+            $_SESSION['errors'] = ['duplicate' => $errorMsg];
+            $_SESSION['old'] = $data;
+            
+            // Preserve return URL on duplicate error
             $returnUrl = $_POST['return_url'] ?? null;
             $redirectUrl = '/customers/create';
             if ($returnUrl) {
@@ -183,8 +227,19 @@ class CustomerController extends Controller
             'city' => $this->sanitize($_POST['city']),
             'state' => $this->sanitize($_POST['state']),
             'zip_code' => $this->sanitize($_POST['zip_code']),
-            'phone_number' => $this->sanitize($_POST['phone_number'] ?? '')
+            'phone_number' => $this->sanitize($_POST['phone_number'] ?? ''),
+            'email' => $this->sanitize($_POST['email'] ?? '')
         ];
+        
+        // Apply title case to names and city
+        $data['full_name'] = $this->toTitleCase($data['full_name']);
+        if (!empty($data['company_name'])) {
+            $data['company_name'] = $this->toTitleCase($data['company_name']);
+        }
+        $data['city'] = $this->toTitleCase($data['city']);
+        
+        // Keep state uppercase (standard for US state codes)
+        $data['state'] = strtoupper($data['state']);
         
         // Validation
         $errors = $this->validate($data, [
@@ -195,8 +250,34 @@ class CustomerController extends Controller
             'zip_code' => 'required'
         ]);
         
+        // Validate email if provided
+        if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Please provide a valid email address';
+        }
+        
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
+            $_SESSION['old'] = $data;
+            $this->redirect('/customers/' . $id . '/edit');
+            return;
+        }
+        
+        // Check for duplicate customer (excluding current customer)
+        $customerModel = new Customer();
+        if ($customerModel->isDuplicate($data['full_name'], $data['phone_number'], $id)) {
+            $duplicate = $customerModel->findDuplicate($data['full_name'], $data['phone_number']);
+            
+            $errorMsg = "Another customer with this name already exists.";
+            if ($duplicate && $duplicate->customer_id != $id) {
+                $errorMsg .= " (Customer #" . $duplicate->customer_id . ": " . 
+                             $duplicate->full_name;
+                if ($duplicate->company_name) {
+                    $errorMsg .= " - " . $duplicate->company_name;
+                }
+                $errorMsg .= ")";
+            }
+            
+            $_SESSION['errors'] = ['duplicate' => $errorMsg];
             $_SESSION['old'] = $data;
             $this->redirect('/customers/' . $id . '/edit');
             return;

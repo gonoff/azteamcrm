@@ -37,8 +37,41 @@ include dirname(__DIR__) . '/layouts/header.php';
                 <form method="POST" action="<?= $order ? "/azteamcrm/orders/{$order->order_id}/update" : "/azteamcrm/orders/store" ?>" class="needs-validation" novalidate autocomplete="off">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     
+                    <?php 
+                    // Determine selected customer FIRST so button visibility works correctly
+                    $displayCustomer = null;
+                    $selectedCustomerId = null;
+                    
+                    // Priority 1: Customer passed from controller (URL param or session)
+                    if (isset($selected_customer) && $selected_customer) {
+                        $displayCustomer = $selected_customer;
+                        $selectedCustomerId = $selected_customer->customer_id;
+                    } 
+                    // Priority 2: Customer from old input (validation failure)
+                    elseif (!empty($old_input['customer_id'])) {
+                        $selectedCustomerId = $old_input['customer_id'];
+                        // Find the customer in the list
+                        foreach ($customers as $customer) {
+                            if ($customer->customer_id == $selectedCustomerId) {
+                                $displayCustomer = $customer;
+                                break;
+                            }
+                        }
+                    }
+                    // Priority 3: Existing order customer
+                    elseif ($order && $order->customer_id) {
+                        $selectedCustomerId = $order->customer_id;
+                        foreach ($customers as $customer) {
+                            if ($customer->customer_id == $selectedCustomerId) {
+                                $displayCustomer = $customer;
+                                break;
+                            }
+                        }
+                    }
+                    ?>
+                    
                     <div class="row">
-                        <div class="col-md-8 mb-3">
+                        <div class="col-md-12 mb-3">
                             <label for="customer_search" class="form-label">Customer <span class="text-danger">*</span></label>
                             
                             <!-- Hidden input to store selected customer ID -->
@@ -48,10 +81,11 @@ include dirname(__DIR__) . '/layouts/header.php';
                                    value="<?= htmlspecialchars($selectedCustomerId ?? '') ?>"
                                    data-required="true">
                             
-                            <!-- Search input for customer selection -->
-                            <div class="position-relative">
+                            <!-- Search input with button group -->
+                            <div class="input-group">
+                                <div class="position-relative flex-grow-1">
                                 <input type="text" 
-                                       class="form-control <?= isset($errors['customer_id']) ? 'is-invalid' : '' ?> <?= (isset($selected_customer) && $selected_customer) || (isset($displayCustomer) && $displayCustomer) ? 'd-none' : '' ?>" 
+                                       class="form-control <?= isset($errors['customer_id']) ? 'is-invalid' : '' ?> <?= $displayCustomer ? 'd-none' : '' ?>" 
                                        id="customer_search" 
                                        placeholder="Type to search customers by name, company, or phone..."
                                        autocomplete="off">
@@ -63,47 +97,26 @@ include dirname(__DIR__) . '/layouts/header.php';
                                     </div>
                                 </div>
                                 
-                                <!-- Search results dropdown -->
-                                <div class="dropdown-menu w-100 shadow dropdown-scrollable" id="customer_results">
-                                    <!-- Results will be populated here -->
                                 </div>
+                                
+                                <?php 
+                                // Determine return URL based on whether we're creating or editing an order
+                                $returnPath = $order ? '/azteamcrm/orders/' . $order->order_id . '/edit' : '/azteamcrm/orders/create';
+                                ?>
+                                <a href="/azteamcrm/customers/create?return_url=<?= urlencode($returnPath) ?>" 
+                                   class="btn btn-outline-primary <?= $displayCustomer ? 'd-none' : '' ?>" 
+                                   id="new_customer_btn">
+                                    <i class="bi bi-plus-circle"></i> New Customer
+                                </a>
+                            </div>
+                            
+                            <!-- Search results dropdown -->
+                            <div class="dropdown-menu w-100 shadow dropdown-scrollable" id="customer_results">
+                                <!-- Results will be populated here -->
                             </div>
                             
                             <!-- Selected customer display -->
                             <div id="selected_customer" class="mt-2">
-                                <?php 
-                                // Simplified logic - trust what the controller provides
-                                $displayCustomer = null;
-                                $selectedCustomerId = null;
-                                
-                                // Priority 1: Customer passed from controller (URL param or session)
-                                if (isset($selected_customer) && $selected_customer) {
-                                    $displayCustomer = $selected_customer;
-                                    $selectedCustomerId = $selected_customer->customer_id;
-                                } 
-                                // Priority 2: Customer from old input (validation failure)
-                                elseif (!empty($old_input['customer_id'])) {
-                                    $selectedCustomerId = $old_input['customer_id'];
-                                    // Find the customer in the list
-                                    foreach ($customers as $customer) {
-                                        if ($customer->customer_id == $selectedCustomerId) {
-                                            $displayCustomer = $customer;
-                                            break;
-                                        }
-                                    }
-                                }
-                                // Priority 3: Existing order customer
-                                elseif ($order && $order->customer_id) {
-                                    $selectedCustomerId = $order->customer_id;
-                                    foreach ($customers as $customer) {
-                                        if ($customer->customer_id == $selectedCustomerId) {
-                                            $displayCustomer = $customer;
-                                            break;
-                                        }
-                                    }
-                                }
-                                ?>
-                                <!-- Debug: Customer ID = <?= htmlspecialchars($selectedCustomerId ?? 'null') ?> -->
                                 <?php
                                 if ($displayCustomer): 
                                 ?>
@@ -127,16 +140,6 @@ include dirname(__DIR__) . '/layouts/header.php';
                             <?php if (isset($errors['customer_id'])): ?>
                                 <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['customer_id']) ?></div>
                             <?php endif; ?>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3 d-flex align-items-end">
-                            <?php 
-                            // Determine return URL based on whether we're creating or editing an order
-                            $returnPath = $order ? '/azteamcrm/orders/' . $order->order_id . '/edit' : '/azteamcrm/orders/create';
-                            ?>
-                            <a href="/azteamcrm/customers/create?return_url=<?= urlencode($returnPath) ?>" class="btn btn-outline-primary">
-                                <i class="bi bi-plus-circle"></i> New Customer
-                            </a>
                         </div>
                     </div>
                     
@@ -390,15 +393,19 @@ function selectCustomer(customerId, fullName, companyName, phoneNumber) {
     const customerIdInput = document.getElementById('customer_id');
     const selectedCustomerDiv = document.getElementById('selected_customer');
     const resultsDropdown = document.getElementById('customer_results');
+    const newCustomerBtn = document.getElementById('new_customer_btn');
     
     // Set the customer ID - this is the most important part
     customerIdInput.value = customerId;
     console.log('Customer selected, setting hidden input to:', customerId);
     console.log('Hidden input value after setting:', customerIdInput.value);
     
-    // Hide search input and show selected customer
-    searchInput.style.display = 'none';
+    // Hide search input and new customer button, show selected customer
+    searchInput.classList.add('d-none');
     searchInput.value = '';
+    if (newCustomerBtn) {
+        newCustomerBtn.classList.add('d-none');
+    }
     resultsDropdown.classList.remove('show');
     
     // Display selected customer
@@ -444,6 +451,7 @@ function clearCustomerSelection() {
     const searchInput = document.getElementById('customer_search');
     const customerIdInput = document.getElementById('customer_id');
     const selectedCustomerDiv = document.getElementById('selected_customer');
+    const newCustomerBtn = document.getElementById('new_customer_btn');
     
     console.log('Clearing customer selection');
     
@@ -453,10 +461,13 @@ function clearCustomerSelection() {
     
     // No localStorage to clear
     
-    // Show search input again
+    // Show search input and new customer button again
     searchInput.classList.remove('d-none');
     searchInput.value = '';
     searchInput.focus();
+    if (newCustomerBtn) {
+        newCustomerBtn.classList.remove('d-none');
+    }
 }
 
 function addActive(items) {

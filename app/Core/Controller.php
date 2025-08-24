@@ -130,6 +130,69 @@ class Controller
         return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
     }
     
+    protected function toTitleCase($string)
+    {
+        if (empty($string)) {
+            return $string;
+        }
+        
+        // Convert to lowercase first to handle ALL CAPS input
+        $string = mb_strtolower($string, 'UTF-8');
+        
+        // List of words that should remain lowercase (except at start)
+        $exceptions = ['de', 'da', 'do', 'dos', 'das', 'e', 'and', 'or', 'of', 'the', 'van', 'von'];
+        
+        // Handle special cases like McDonald, O'Brien, etc.
+        $patterns = [
+            // McDonald, MacDonald, etc.
+            "/(^|\\s)(mc|mac)([a-z])/i" => function($matches) {
+                return $matches[1] . ucfirst(strtolower($matches[2])) . ucfirst($matches[3]);
+            },
+            // O'Brien, O'Connor, etc.
+            "/(^|\\s)(o')([a-z])/i" => function($matches) {
+                return $matches[1] . $matches[2] . ucfirst($matches[3]);
+            }
+        ];
+        
+        // Split by spaces and hyphens while keeping delimiters
+        $words = preg_split('/(\s+|-)/u', $string, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $result = [];
+        $isFirst = true;
+        
+        foreach ($words as $word) {
+            if ($word === ' ' || $word === '-' || trim($word) === '') {
+                $result[] = $word;
+                continue;
+            }
+            
+            $lowerWord = mb_strtolower($word, 'UTF-8');
+            
+            // Always capitalize first word, otherwise check exceptions
+            if ($isFirst || !in_array($lowerWord, $exceptions)) {
+                // Apply special patterns
+                $formatted = $word;
+                foreach ($patterns as $pattern => $callback) {
+                    $formatted = preg_replace_callback($pattern, $callback, $formatted);
+                }
+                
+                // If no special pattern matched, use standard title case
+                if ($formatted === $word) {
+                    $formatted = mb_convert_case($word, MB_CASE_TITLE, 'UTF-8');
+                }
+                
+                $result[] = $formatted;
+            } else {
+                $result[] = $lowerWord;
+            }
+            
+            if (!empty(trim($word))) {
+                $isFirst = false;
+            }
+        }
+        
+        return implode('', $result);
+    }
+    
     protected function validate($data, $rules)
     {
         $errors = [];

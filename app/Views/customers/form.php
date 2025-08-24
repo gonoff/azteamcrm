@@ -151,7 +151,7 @@
                             </div>
                         </div>
 
-                        <!-- Phone and Status -->
+                        <!-- Phone and Email -->
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="phone_number" class="form-label">Phone Number</label>
@@ -164,6 +164,20 @@
                                 <small class="text-muted">Optional</small>
                             </div>
                             
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" 
+                                       class="form-control" 
+                                       id="email" 
+                                       name="email" 
+                                       value="<?= htmlspecialchars($_SESSION['old']['email'] ?? $customer->email ?? '') ?>" 
+                                       placeholder="customer@example.com">
+                                <small class="text-muted">Optional</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Status -->
+                        <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="customer_status" class="form-label">Status</label>
                                 <select class="form-select" id="customer_status" name="customer_status">
