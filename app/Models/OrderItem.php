@@ -165,7 +165,14 @@ class OrderItem extends Model
             return 'N/A';
         }
         
-        return ucwords(str_replace('_', ' ', $this->custom_area));
+        // Handle comma-separated values
+        $areas = explode(',', $this->custom_area);
+        $formattedAreas = array_map(function($area) {
+            return ucwords(str_replace('_', ' ', trim($area)));
+        }, $areas);
+        
+        // Join with comma and space for better readability
+        return implode(', ', $formattedAreas);
     }
     
     public function getUrgencyBadge()

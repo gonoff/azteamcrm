@@ -10,6 +10,12 @@
             <i class="bi bi-pencil"></i> Edit Order
         </a>
         
+        <?php if ($order->getBalanceDue() > 0): ?>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#recordPaymentModal">
+                <i class="bi bi-credit-card-2-front"></i> Record Payment
+            </button>
+        <?php endif; ?>
+        
         <?php if (!in_array($order->order_status, ['cancelled', 'completed'])): ?>
             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">
                 <i class="bi bi-x-circle"></i> Cancel Order
@@ -128,9 +134,9 @@
                     <a href="/azteamcrm/orders/<?= $order->order_id ?>/order-items" class="btn btn-sm btn-info">
                         <i class="bi bi-list"></i> View All
                     </a>
-                    <a href="/azteamcrm/orders/<?= $order->order_id ?>/order-items/create" class="btn btn-sm btn-primary">
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createOrderItemModal">
                         <i class="bi bi-plus"></i> Add Item
-                    </a>
+                    </button>
                 </div>
             </div>
             <div class="card-body">
@@ -211,9 +217,22 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <a href="/azteamcrm/order-items/<?= $item->order_item_id ?>/edit" class="btn btn-sm btn-outline-secondary" title="Full Edit">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-secondary edit-item-modal" 
+                                                title="Edit Item"
+                                                data-item-id="<?= $item->order_item_id ?>"
+                                                data-product-description="<?= htmlspecialchars($item->product_description) ?>"
+                                                data-product-type="<?= $item->product_type ?>"
+                                                data-product-size="<?= $item->product_size ?>"
+                                                data-quantity="<?= $item->quantity ?>"
+                                                data-unit-price="<?= $item->unit_price ?>"
+                                                data-custom-method="<?= $item->custom_method ?>"
+                                                data-custom-area="<?= htmlspecialchars($item->custom_area ?? '') ?>"
+                                                data-order-item-status="<?= $item->order_item_status ?>"
+                                                data-supplier-status="<?= $item->supplier_status ?>"
+                                                data-note-item="<?= htmlspecialchars($item->note_item ?? '') ?>">
                                             <i class="bi bi-pencil"></i>
-                                        </a>
+                                        </button>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -226,6 +245,90 @@
     </div>
     
     <div class="col-md-4">
+        <!-- Production Status Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Production Status</h5>
+            </div>
+            <div class="card-body">
+                <?php 
+                $totalItems = count($orderItems);
+                $completedItems = 0;
+                $inProductionItems = 0;
+                $pendingItems = 0;
+                
+                foreach ($orderItems as $item) {
+                    if ($item->order_item_status === 'completed') {
+                        $completedItems++;
+                    } elseif ($item->order_item_status === 'in_production') {
+                        $inProductionItems++;
+                    } elseif ($item->order_item_status === 'pending') {
+                        $pendingItems++;
+                    }
+                }
+                $completionPercentage = $totalItems > 0 ? ($completedItems / $totalItems) * 100 : 0;
+                ?>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong>Overall Progress:</strong>
+                        <strong><?= round($completionPercentage) ?>%</strong>
+                    </div>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-success" 
+                             style="width: <?= $completionPercentage ?>%">
+                            <?= $completedItems ?> completed
+                        </div>
+                        <?php if ($inProductionItems > 0): ?>
+                        <div class="progress-bar bg-info" 
+                             style="width: <?= $totalItems > 0 ? ($inProductionItems / $totalItems) * 100 : 0 ?>%">
+                            <?= $inProductionItems ?> in production
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($pendingItems > 0): ?>
+                        <div class="progress-bar bg-warning" 
+                             style="width: <?= $totalItems > 0 ? ($pendingItems / $totalItems) * 100 : 0 ?>%">
+                            <?= $pendingItems ?> pending
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Status Breakdown -->
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="text-muted small">Pending</div>
+                        <div class="h5"><?= $pendingItems ?></div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">In Production</div>
+                        <div class="h5"><?= $inProductionItems ?></div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Completed</div>
+                        <div class="h5"><?= $completedItems ?></div>
+                    </div>
+                </div>
+                
+                <?php if ($completionPercentage == 100 && $order->payment_status === 'paid'): ?>
+                    <hr>
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle"></i> Order Complete!
+                    </div>
+                <?php elseif ($order->isOverdue()): ?>
+                    <hr>
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Order is overdue!
+                    </div>
+                <?php elseif ($totalItems == 0): ?>
+                    <hr>
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-info-circle"></i> No items added yet
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        
         <!-- Financial Summary Card -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
@@ -297,47 +400,8 @@
                     </table>
                 </div>
                 
+                <?php if ($order->getBalanceDue() <= 0): ?>
                 <hr>
-                
-                <!-- Add Payment Form -->
-                <?php if ($order->getBalanceDue() > 0): ?>
-                <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/process-payment">
-                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                    
-                    <h6>Record Payment</h6>
-                    
-                    <div class="mb-2">
-                        <label class="form-label">Amount</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" name="payment_amount" 
-                                   step="0.01" min="0.01" max="<?= $order->getBalanceDue() ?>"
-                                   value="<?= $order->getBalanceDue() ?>" required>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <label class="form-label">Method</label>
-                        <select class="form-select form-select-sm" name="payment_method">
-                            <option value="">Select Method</option>
-                            <option value="cash">Cash</option>
-                            <option value="check">Check</option>
-                            <option value="credit_card">Credit Card</option>
-                            <option value="bank_transfer">Bank Transfer</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <label class="form-label">Notes</label>
-                        <textarea class="form-control form-control-sm" name="payment_notes" rows="2"></textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-success w-100">
-                        <i class="bi bi-cash"></i> Record Payment
-                    </button>
-                </form>
-                <?php else: ?>
                 <div class="alert alert-success">
                     <i class="bi bi-check-circle"></i> Order Fully Paid
                 </div>
@@ -375,46 +439,6 @@
                 <?php endif; ?>
             </div>
         </div>
-        
-        <!-- Production Status Card -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Production Status</h5>
-            </div>
-            <div class="card-body">
-                <?php 
-                $totalItems = count($orderItems);
-                $completedItems = 0;
-                foreach ($orderItems as $item) {
-                    if ($item->order_item_status === 'completed') {
-                        $completedItems++;
-                    }
-                }
-                $completionPercentage = $totalItems > 0 ? ($completedItems / $totalItems) * 100 : 0;
-                ?>
-                
-                <div class="mb-3">
-                    <strong>Progress:</strong>
-                    <div class="progress mt-2">
-                        <div class="progress-bar <?= $completionPercentage == 100 ? 'progress-bar-success' : '' ?>" 
-                             style="width: <?= $completionPercentage ?>%">
-                            <?= round($completionPercentage) ?>%
-                        </div>
-                    </div>
-                    <small class="text-muted"><?= $completedItems ?> of <?= $totalItems ?> items completed</small>
-                </div>
-                
-                <?php if ($completionPercentage == 100 && $order->payment_status === 'paid'): ?>
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle"></i> Order Complete!
-                    </div>
-                <?php elseif ($order->isOverdue()): ?>
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle"></i> Order is overdue!
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -443,7 +467,313 @@
 </div>
 <?php endif; ?>
 
+<!-- Edit Order Item Modal -->
+<div class="modal fade" id="editOrderItemModal" tabindex="-1" aria-labelledby="editOrderItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="editOrderItemForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editOrderItemModalLabel">Edit Order Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                    <input type="hidden" id="edit_order_item_id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_product_description" class="form-label">Product Description <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_product_description" name="product_description" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_product_type" class="form-label">Product Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_product_type" name="product_type" required>
+                                <option value="">Select Product Type</option>
+                                <option value="shirt">Shirt</option>
+                                <option value="apron">Apron</option>
+                                <option value="scrub">Scrub</option>
+                                <option value="hat">Hat</option>
+                                <option value="bag">Bag</option>
+                                <option value="beanie">Beanie</option>
+                                <option value="business_card">Business Card</option>
+                                <option value="yard_sign">Yard Sign</option>
+                                <option value="car_magnet">Car Magnet</option>
+                                <option value="greeting_card">Greeting Card</option>
+                                <option value="door_hanger">Door Hanger</option>
+                                <option value="magnet_business_card">Magnet Business Card</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_product_size" class="form-label">Size <span class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_product_size" name="product_size" required>
+                                <option value="">Select Size</option>
+                                <optgroup label="Child Sizes">
+                                    <option value="child_xs">Child XS</option>
+                                    <option value="child_s">Child S</option>
+                                    <option value="child_m">Child M</option>
+                                    <option value="child_l">Child L</option>
+                                    <option value="child_xl">Child XL</option>
+                                </optgroup>
+                                <optgroup label="Adult Sizes">
+                                    <option value="xs">XS</option>
+                                    <option value="s">S</option>
+                                    <option value="m">M</option>
+                                    <option value="l">L</option>
+                                    <option value="xl">XL</option>
+                                    <option value="xxl">XXL</option>
+                                    <option value="xxxl">XXXL</option>
+                                    <option value="xxxxl">XXXXL</option>
+                                </optgroup>
+                                <optgroup label="Other">
+                                    <option value="one_size">One Size</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_quantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="edit_quantity" name="quantity" min="1" required>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_unit_price" class="form-label">Unit Price <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="edit_unit_price" name="unit_price" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_custom_method" class="form-label">Customization Method <span class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_custom_method" name="custom_method" required>
+                                <option value="">Select Method</option>
+                                <option value="htv">HTV (Heat Transfer Vinyl)</option>
+                                <option value="dft">DFT (Direct Film Transfer)</option>
+                                <option value="embroidery">Embroidery</option>
+                                <option value="sublimation">Sublimation</option>
+                                <option value="printing_services">Printing Services</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Customization Areas</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_customization_area_front" name="customization_area_front">
+                                    <label class="form-check-label" for="edit_customization_area_front">Front</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_customization_area_back" name="customization_area_back">
+                                    <label class="form-check-label" for="edit_customization_area_back">Back</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_customization_area_sleeve" name="customization_area_sleeve">
+                                    <label class="form-check-label" for="edit_customization_area_sleeve">Sleeve</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_order_item_status" class="form-label">Item Status</label>
+                            <select class="form-select" id="edit_order_item_status" name="order_item_status">
+                                <option value="pending">Pending</option>
+                                <option value="in_production">In Production</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_supplier_status" class="form-label">Supplier Status</label>
+                            <select class="form-select" id="edit_supplier_status" name="supplier_status">
+                                <option value="awaiting_order">Awaiting Order</option>
+                                <option value="order_made">Order Made</option>
+                                <option value="order_arrived">Order Arrived</option>
+                                <option value="order_delivered">Order Delivered</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_note_item" class="form-label">Special Instructions / Notes</label>
+                        <textarea class="form-control" id="edit_note_item" name="note_item" rows="3" placeholder="Any special instructions or notes for this item"></textarea>
+                    </div>
+                    
+                    <div id="editModalErrors" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Order Item Modal -->
+<div class="modal fade" id="createOrderItemModal" tabindex="-1" aria-labelledby="createOrderItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="createOrderItemForm" method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/order-items/store">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createOrderItemModalLabel">Add New Order Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="create_product_description" class="form-label">Product Description <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="create_product_description" name="product_description" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="create_product_type" class="form-label">Product Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="create_product_type" name="product_type" required>
+                                <option value="">Select Product Type</option>
+                                <option value="shirt">Shirt</option>
+                                <option value="apron">Apron</option>
+                                <option value="scrub">Scrub</option>
+                                <option value="hat">Hat</option>
+                                <option value="bag">Bag</option>
+                                <option value="beanie">Beanie</option>
+                                <option value="business_card">Business Card</option>
+                                <option value="yard_sign">Yard Sign</option>
+                                <option value="car_magnet">Car Magnet</option>
+                                <option value="greeting_card">Greeting Card</option>
+                                <option value="door_hanger">Door Hanger</option>
+                                <option value="magnet_business_card">Magnet Business Card</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="create_product_size" class="form-label">Size <span class="text-danger">*</span></label>
+                            <select class="form-select" id="create_product_size" name="product_size" required>
+                                <option value="">Select Size</option>
+                                <optgroup label="Child Sizes">
+                                    <option value="child_xs">Child XS</option>
+                                    <option value="child_s">Child S</option>
+                                    <option value="child_m">Child M</option>
+                                    <option value="child_l">Child L</option>
+                                    <option value="child_xl">Child XL</option>
+                                </optgroup>
+                                <optgroup label="Adult Sizes">
+                                    <option value="xs">XS</option>
+                                    <option value="s">S</option>
+                                    <option value="m">M</option>
+                                    <option value="l">L</option>
+                                    <option value="xl">XL</option>
+                                    <option value="xxl">XXL</option>
+                                    <option value="xxxl">XXXL</option>
+                                    <option value="xxxxl">XXXXL</option>
+                                </optgroup>
+                                <optgroup label="Other">
+                                    <option value="one_size">One Size</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="create_quantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="create_quantity" name="quantity" min="1" value="1" required>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="create_unit_price" class="form-label">Unit Price <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="create_unit_price" name="unit_price" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="create_custom_method" class="form-label">Customization Method <span class="text-danger">*</span></label>
+                            <select class="form-select" id="create_custom_method" name="custom_method" required>
+                                <option value="">Select Method</option>
+                                <option value="htv">HTV (Heat Transfer Vinyl)</option>
+                                <option value="dft">DFT (Direct Film Transfer)</option>
+                                <option value="embroidery">Embroidery</option>
+                                <option value="sublimation">Sublimation</option>
+                                <option value="printing_services">Printing Services</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Customization Areas</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="create_customization_area_front" name="customization_area_front">
+                                    <label class="form-check-label" for="create_customization_area_front">Front</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="create_customization_area_back" name="customization_area_back">
+                                    <label class="form-check-label" for="create_customization_area_back">Back</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="create_customization_area_sleeve" name="customization_area_sleeve">
+                                    <label class="form-check-label" for="create_customization_area_sleeve">Sleeve</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="create_order_item_status" class="form-label">Item Status</label>
+                            <select class="form-select" id="create_order_item_status" name="order_item_status">
+                                <option value="pending" selected>Pending</option>
+                                <option value="in_production">In Production</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="create_supplier_status" class="form-label">Supplier Status</label>
+                            <select class="form-select" id="create_supplier_status" name="supplier_status">
+                                <option value="awaiting_order" selected>Awaiting Order</option>
+                                <option value="order_made">Order Made</option>
+                                <option value="order_arrived">Order Arrived</option>
+                                <option value="order_delivered">Order Delivered</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="create_note_item" class="form-label">Special Instructions / Notes</label>
+                        <textarea class="form-control" id="create_note_item" name="note_item" rows="3" placeholder="Any special instructions or notes for this item"></textarea>
+                    </div>
+                    
+                    <div id="createModalErrors" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Add Item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
+// Cache-busting: Force browser to use latest version
+console.log('Script loaded at:', new Date().toISOString());
+
 document.addEventListener('DOMContentLoaded', function() {
     // Show/hide paid amount field based on payment status
     const paymentStatusSelect = document.getElementById('payment_status');
@@ -657,6 +987,446 @@ document.addEventListener('DOMContentLoaded', function() {
         dropdown.setAttribute('data-bs-boundary', 'viewport');
         dropdown.setAttribute('data-bs-flip', 'true');
     });
+    
+    // Edit Order Item Modal functionality
+    const editButtons = document.querySelectorAll('.edit-item-modal');
+    const editModal = document.getElementById('editOrderItemModal');
+    const editForm = document.getElementById('editOrderItemForm');
+    
+    // Create modal instance once and reuse it
+    let editModalInstance = null;
+    if (editModal) {
+        editModalInstance = new bootstrap.Modal(editModal, {
+            backdrop: 'static',
+            keyboard: true
+        });
+        
+        // Reset form and clear dynamic alerts when modal is hidden
+        editModal.addEventListener('hidden.bs.modal', function () {
+            if (editForm) {
+                editForm.reset();
+            }
+            // Remove any dynamic alerts
+            const alerts = document.querySelectorAll('.modal-dynamic-alert');
+            alerts.forEach(alert => alert.remove());
+        });
+    }
+    
+    editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Clear any previous dynamic alerts
+            const alerts = document.querySelectorAll('.modal-dynamic-alert');
+            alerts.forEach(alert => alert.remove());
+            
+            // Get item data from data attributes
+            const itemId = this.dataset.itemId;
+            const productDescription = this.dataset.productDescription;
+            const productType = this.dataset.productType;
+            const productSize = this.dataset.productSize;
+            const quantity = this.dataset.quantity;
+            const unitPrice = this.dataset.unitPrice;
+            const customMethod = this.dataset.customMethod;
+            const customArea = this.dataset.customArea;
+            const orderItemStatus = this.dataset.orderItemStatus;
+            const supplierStatus = this.dataset.supplierStatus;
+            const noteItem = this.dataset.noteItem;
+            
+            // Populate modal fields
+            document.getElementById('edit_order_item_id').value = itemId;
+            document.getElementById('edit_product_description').value = productDescription;
+            document.getElementById('edit_product_type').value = productType || '';
+            document.getElementById('edit_product_size').value = productSize || '';
+            document.getElementById('edit_quantity').value = quantity;
+            document.getElementById('edit_unit_price').value = unitPrice;
+            document.getElementById('edit_custom_method').value = customMethod || '';
+            document.getElementById('edit_order_item_status').value = orderItemStatus || 'pending';
+            document.getElementById('edit_supplier_status').value = supplierStatus || 'awaiting_order';
+            document.getElementById('edit_note_item').value = noteItem || '';
+            
+            // Handle customization areas (checkboxes)
+            const frontCb = document.getElementById('edit_customization_area_front');
+            const backCb = document.getElementById('edit_customization_area_back');
+            const sleeveCb = document.getElementById('edit_customization_area_sleeve');
+            
+            if (frontCb) frontCb.checked = false;
+            if (backCb) backCb.checked = false;
+            if (sleeveCb) sleeveCb.checked = false;
+            
+            if (customArea) {
+                const areas = customArea.split(',');
+                areas.forEach(area => {
+                    const checkbox = document.getElementById('edit_customization_area_' + area.trim());
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+            
+            // Trigger product type change event to handle size disabling for non-apparel items
+            const productTypeSelect = document.getElementById('edit_product_type');
+            const sizeSelect = document.getElementById('edit_product_size');
+            const nonApparelTypes = ['business_card', 'yard_sign', 'car_magnet', 'greeting_card', 'door_hanger', 'magnet_business_card'];
+            
+            if (nonApparelTypes.includes(productType)) {
+                sizeSelect.disabled = true;
+                sizeSelect.value = '';
+            } else {
+                sizeSelect.disabled = false;
+            }
+            
+            // Show the modal using the existing instance
+            if (editModalInstance) {
+                editModalInstance.show();
+            }
+        });
+    });
+    
+    // Handle product type change in modal
+    const editProductType = document.getElementById('edit_product_type');
+    if (editProductType) {
+        editProductType.addEventListener('change', function() {
+            const nonApparelTypes = ['business_card', 'yard_sign', 'car_magnet', 'greeting_card', 'door_hanger', 'magnet_business_card'];
+            const sizeSelect = document.getElementById('edit_product_size');
+            
+            if (nonApparelTypes.includes(this.value)) {
+                sizeSelect.disabled = true;
+                sizeSelect.value = '';
+            } else {
+                sizeSelect.disabled = false;
+            }
+        });
+    }
+    
+    // Dynamic error/success display function that always works
+    function showModalMessage(message, type = 'error') {
+        // Remove any existing alerts
+        const existingAlerts = document.querySelectorAll('.modal-dynamic-alert');
+        existingAlerts.forEach(alert => alert.remove());
+        
+        // Create new alert
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show modal-dynamic-alert`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Try to insert in modal body
+        const modalBody = document.querySelector('#editOrderItemModal .modal-body');
+        if (modalBody) {
+            modalBody.insertBefore(alertDiv, modalBody.firstChild);
+            alertDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            // Fallback to alert if modal not found
+            alert(message);
+        }
+    }
+    
+    // Handle form submission
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const itemId = document.getElementById('edit_order_item_id').value;
+            
+            // Validate required fields
+            const productDesc = formData.get('product_description');
+            const quantity = formData.get('quantity');
+            const unitPrice = formData.get('unit_price');
+            
+            if (!itemId) {
+                alert('Error: No item ID found. Please refresh the page and try again.');
+                return;
+            }
+            
+            if (!productDesc || productDesc.trim() === '') {
+                alert('Product description is required.');
+                return;
+            }
+            
+            if (!quantity || quantity <= 0) {
+                alert('Quantity must be greater than 0.');
+                return;
+            }
+            
+            if (!unitPrice || unitPrice < 0) {
+                alert('Unit price must be 0 or greater.');
+                return;
+            }
+            
+            // Disable submit button to prevent double submission
+            const submitButton = editForm.querySelector('button[type="submit"]');
+            let originalButtonText = '';
+            if (submitButton) {
+                originalButtonText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+            }
+            
+            // Build customization areas string
+            const areas = [];
+            const frontCheckbox = document.getElementById('edit_customization_area_front');
+            const backCheckbox = document.getElementById('edit_customization_area_back');
+            const sleeveCheckbox = document.getElementById('edit_customization_area_sleeve');
+            
+            if (frontCheckbox && frontCheckbox.checked) areas.push('front');
+            if (backCheckbox && backCheckbox.checked) areas.push('back');
+            if (sleeveCheckbox && sleeveCheckbox.checked) areas.push('sleeve');
+            formData.append('custom_area', areas.join(','));
+            
+            // Clear any previous messages
+            const existingAlerts = document.querySelectorAll('.modal-dynamic-alert');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            // Log the data being sent
+            console.log('Form data before sending:', {
+                itemId: itemId,
+                product_description: formData.get('product_description'),
+                quantity: formData.get('quantity'),
+                unit_price: formData.get('unit_price'),
+                product_type: formData.get('product_type'),
+                product_size: formData.get('product_size'),
+                custom_method: formData.get('custom_method'),
+                order_item_status: formData.get('order_item_status'),
+                supplier_status: formData.get('supplier_status')
+            });
+            
+            // Convert FormData to URLSearchParams for application/x-www-form-urlencoded
+            const params = new URLSearchParams();
+            for (const [key, value] of formData) {
+                if (!key.startsWith('customization_area_')) {
+                    params.append(key, value);
+                }
+            }
+            params.append('ajax', '1'); // Flag for AJAX request
+            
+            // Debug log - show all parameters being sent
+            console.log('Submitting edit for item:', itemId);
+            console.log('Parameters being sent:', params.toString());
+            
+            // Send AJAX request
+            fetch(`/azteamcrm/order-items/${itemId}/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString()
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    // Show success message in modal first
+                    showModalMessage(data.message || 'Order item updated successfully!', 'success');
+                    
+                    // Close modal and reload page after a short delay
+                    setTimeout(() => {
+                        if (editModalInstance) {
+                            editModalInstance.hide();
+                        }
+                        location.reload();
+                    }, 1000);
+                } else {
+                    // Re-enable button on error
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalButtonText;
+                    }
+                    
+                    // Show errors using dynamic message function
+                    let errorMessage = '';
+                    if (data.errors && Array.isArray(data.errors)) {
+                        errorMessage = '<ul class="mb-0">' + data.errors.map(error => `<li>${error}</li>`).join('') + '</ul>';
+                    } else {
+                        errorMessage = data.message || 'Failed to update order item.';
+                    }
+                    showModalMessage(errorMessage, 'error');
+                    console.error('Update failed:', data.message || 'Unknown error');
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                
+                // Re-enable button on error
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                }
+                
+                // Show error using dynamic message function
+                showModalMessage('An error occurred while updating the item. Error: ' + error.message, 'error');
+            });
+        });
+    }
+    
+    // Create Order Item Modal Form Handler
+    const createForm = document.getElementById('createOrderItemForm');
+    const createModalInstance = new bootstrap.Modal(document.getElementById('createOrderItemModal'));
+    
+    if (createForm) {
+        // Handle product type change for non-apparel items
+        const createProductType = document.getElementById('create_product_type');
+        if (createProductType) {
+            createProductType.addEventListener('change', function() {
+                const nonApparelTypes = ['business_card', 'yard_sign', 'car_magnet', 'greeting_card', 'door_hanger', 'magnet_business_card'];
+                const sizeSelect = document.getElementById('create_product_size');
+                
+                if (nonApparelTypes.includes(this.value)) {
+                    sizeSelect.disabled = true;
+                    sizeSelect.value = '';
+                    sizeSelect.removeAttribute('required');
+                } else {
+                    sizeSelect.disabled = false;
+                    sizeSelect.setAttribute('required', 'required');
+                }
+            });
+        }
+        
+        createForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form data
+            const formData = new FormData(createForm);
+            
+            // Basic validation
+            const productDesc = formData.get('product_description');
+            const quantity = parseInt(formData.get('quantity'));
+            const unitPrice = parseFloat(formData.get('unit_price'));
+            
+            if (!productDesc || productDesc.trim() === '') {
+                alert('Product description is required.');
+                return;
+            }
+            
+            if (!quantity || quantity <= 0) {
+                alert('Quantity must be greater than 0.');
+                return;
+            }
+            
+            if (!unitPrice || unitPrice < 0) {
+                alert('Unit price must be 0 or greater.');
+                return;
+            }
+            
+            // Disable submit button to prevent double submission
+            const submitButton = createForm.querySelector('button[type="submit"]');
+            let originalButtonText = '';
+            if (submitButton) {
+                originalButtonText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
+            }
+            
+            // Build customization areas string
+            const areas = [];
+            const frontCheckbox = document.getElementById('create_customization_area_front');
+            const backCheckbox = document.getElementById('create_customization_area_back');
+            const sleeveCheckbox = document.getElementById('create_customization_area_sleeve');
+            
+            if (frontCheckbox && frontCheckbox.checked) areas.push('front');
+            if (backCheckbox && backCheckbox.checked) areas.push('back');
+            if (sleeveCheckbox && sleeveCheckbox.checked) areas.push('sleeve');
+            formData.append('custom_area', areas.join(','));
+            
+            // Clear any previous messages
+            const existingAlerts = document.querySelectorAll('.modal-dynamic-alert');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            // Log the data being sent
+            console.log('Create form data before sending:', {
+                product_description: formData.get('product_description'),
+                quantity: formData.get('quantity'),
+                unit_price: formData.get('unit_price'),
+                product_type: formData.get('product_type'),
+                product_size: formData.get('product_size'),
+                custom_method: formData.get('custom_method'),
+                order_item_status: formData.get('order_item_status'),
+                supplier_status: formData.get('supplier_status'),
+                custom_area: areas.join(',')
+            });
+            
+            // Convert FormData to URLSearchParams for application/x-www-form-urlencoded
+            const params = new URLSearchParams();
+            for (const [key, value] of formData) {
+                if (!key.startsWith('customization_area_')) {
+                    params.append(key, value);
+                }
+            }
+            params.append('ajax', '1'); // Flag for AJAX request
+            
+            // Debug log - show all parameters being sent
+            console.log('Submitting new item to order <?= $order->order_id ?>');
+            console.log('Parameters being sent:', params.toString());
+            
+            // Send AJAX request
+            fetch('/azteamcrm/orders/<?= $order->order_id ?>/order-items/store', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString()
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    // Show success message in modal first
+                    showModalMessage(data.message || 'Order item added successfully!', 'success');
+                    
+                    // Close modal and reload page after a short delay
+                    setTimeout(() => {
+                        if (createModalInstance) {
+                            createModalInstance.hide();
+                        }
+                        location.reload();
+                    }, 1000);
+                } else {
+                    // Re-enable button on error
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalButtonText;
+                    }
+                    
+                    // Show errors using dynamic message function
+                    let errorMessage = '';
+                    if (data.errors && Array.isArray(data.errors)) {
+                        errorMessage = '<ul class="mb-0">' + data.errors.map(error => `<li>${error}</li>`).join('') + '</ul>';
+                    } else {
+                        errorMessage = data.message || 'Failed to add order item.';
+                    }
+                    showModalMessage(errorMessage, 'error');
+                    console.error('Create failed:', data.message || 'Unknown error');
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                
+                // Re-enable button on error
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                }
+                
+                // Show error using dynamic message function
+                showModalMessage('An error occurred while adding the item. Error: ' + error.message, 'error');
+            });
+        });
+    }
 });
 </script>
 
@@ -682,6 +1452,66 @@ document.addEventListener('DOMContentLoaded', function() {
                     </button>
                 </form>
             </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Record Payment Modal -->
+<?php if ($order->getBalanceDue() > 0): ?>
+<div class="modal fade" id="recordPaymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/process-payment">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Recording payment for Order #<?= $order->order_id ?>
+                        <br>
+                        <small>Balance Due: $<?= number_format($order->getBalanceDue(), 2) ?></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="payment_amount" name="payment_amount" 
+                                   step="0.01" min="0.01" max="<?= $order->getBalanceDue() ?>"
+                                   value="<?= $order->getBalanceDue() ?>" required>
+                        </div>
+                        <small class="text-muted">Maximum: $<?= number_format($order->getBalanceDue(), 2) ?></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_method" class="form-label">Payment Method</label>
+                        <select class="form-select" id="payment_method" name="payment_method">
+                            <option value="">Select Method (Optional)</option>
+                            <option value="cash">Cash</option>
+                            <option value="check">Check</option>
+                            <option value="credit_card">Credit Card</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="payment_notes" name="payment_notes" rows="3" 
+                                  placeholder="Optional notes about this payment..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Record Payment
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

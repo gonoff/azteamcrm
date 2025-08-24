@@ -64,6 +64,10 @@ class OrderItemController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
+            if (isset($_POST['ajax'])) {
+                $this->json(['success' => false, 'message' => 'Invalid request method']);
+                return;
+            }
             $this->redirect('/orders/' . $order_id . '/order-items');
         }
         
@@ -73,10 +77,15 @@ class OrderItemController extends Controller
         $orderData = $order->find($order_id);
         
         if (!$orderData) {
+            if (isset($_POST['ajax'])) {
+                $this->json(['success' => false, 'message' => 'Order not found']);
+                return;
+            }
             $this->redirect('/orders');
         }
         
         $data = $this->sanitize($_POST);
+        $isAjax = isset($data['ajax']);
         
         // Validation
         $errors = $this->validate($data, [
@@ -86,6 +95,10 @@ class OrderItemController extends Controller
         ]);
         
         if (!empty($errors)) {
+            if ($isAjax) {
+                $this->json(['success' => false, 'errors' => array_values($errors)]);
+                return;
+            }
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
             $this->redirect('/orders/' . $order_id . '/order-items/create');
@@ -96,13 +109,13 @@ class OrderItemController extends Controller
         $data['user_id'] = $_SESSION['user_id'];
         $data['order_item_status'] = $data['order_item_status'] ?? 'pending';
         
-        // Handle optional fields
-        $data['product_type'] = $data['product_type'] ?? null;
-        $data['product_size'] = $data['product_size'] ?? null;
-        $data['custom_method'] = $data['custom_method'] ?? null;
-        $data['custom_area'] = $data['custom_area'] ?? null;
-        $data['supplier_status'] = $data['supplier_status'] ?? null;
-        $data['note_item'] = $data['note_item'] ?? null;
+        // Handle optional fields - convert empty strings to null
+        $data['product_type'] = (!empty($data['product_type']) ? $data['product_type'] : null);
+        $data['product_size'] = (!empty($data['product_size']) ? $data['product_size'] : null);
+        $data['custom_method'] = (!empty($data['custom_method']) ? $data['custom_method'] : null);
+        $data['custom_area'] = (!empty($data['custom_area']) ? $data['custom_area'] : null);
+        $data['supplier_status'] = (!empty($data['supplier_status']) ? $data['supplier_status'] : null);
+        $data['note_item'] = (!empty($data['note_item']) ? $data['note_item'] : null);
         
         $orderItem = new OrderItem();
         $newItem = $orderItem->create($data);
@@ -114,9 +127,22 @@ class OrderItemController extends Controller
             // Sync order status from items
             $orderData->syncStatusFromItems();
             
+            if ($isAjax) {
+                $this->json([
+                    'success' => true, 
+                    'message' => 'Order item added successfully!',
+                    'item_id' => $newItem->order_item_id
+                ]);
+                return;
+            }
+            
             $_SESSION['success'] = 'Order item added successfully!';
             $this->redirect('/orders/' . $order_id . '/order-items');
         } else {
+            if ($isAjax) {
+                $this->json(['success' => false, 'message' => 'Failed to add order item.']);
+                return;
+            }
             $_SESSION['error'] = 'Failed to add order item.';
             $this->redirect('/orders/' . $order_id . '/order-items/create');
         }
@@ -153,6 +179,10 @@ class OrderItemController extends Controller
         $this->requireAuth();
         
         if (!$this->isPost()) {
+            if (isset($_POST['ajax'])) {
+                $this->json(['success' => false, 'message' => 'Invalid request method']);
+                return;
+            }
             $this->redirect('/orders');
         }
         
@@ -162,10 +192,15 @@ class OrderItemController extends Controller
         $itemData = $orderItem->find($id);
         
         if (!$itemData) {
+            if (isset($_POST['ajax'])) {
+                $this->json(['success' => false, 'message' => 'Order item not found for ID: ' . $id]);
+                return;
+            }
             $this->redirect('/orders');
         }
         
         $data = $this->sanitize($_POST);
+        $isAjax = isset($data['ajax']);
         
         // Validation
         $errors = $this->validate($data, [
@@ -175,6 +210,10 @@ class OrderItemController extends Controller
         ]);
         
         if (!empty($errors)) {
+            if ($isAjax) {
+                $this->json(['success' => false, 'errors' => array_values($errors)]);
+                return;
+            }
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
             $this->redirect('/order-items/' . $id . '/edit');
@@ -188,20 +227,133 @@ class OrderItemController extends Controller
         $data['supplier_status'] = $data['supplier_status'] ?? null;
         $data['note_item'] = $data['note_item'] ?? null;
         
-        $itemData->fill($data);
+        // Handle status fields specifically
+        if (isset($data['order_item_status'])) {
+            $data['order_item_status'] = $data['order_item_status'];
+        }
         
-        if ($itemData->update()) {
-            // Update order total
-            $order = $itemData->getOrder();
-            $order->calculateTotal();
+        // Debug logging for AJAX requests
+        if ($isAjax) {
+            error_log('OrderItem Update - Data to be saved: ' . json_encode($data));
+            error_log('OrderItem Update - Item ID: ' . $id);
+        }
+        
+        try {
+            // Direct database update - bypassing Model complexity
+            $db = \App\Core\Database::getInstance();
+            $connection = $db->getConnection();
             
-            // Sync order status from items
-            $order->syncStatusFromItems();
+            // Build the UPDATE query with all fields explicitly
+            $sql = "UPDATE order_items SET 
+                    product_description = :product_description,
+                    product_type = :product_type,
+                    product_size = :product_size,
+                    quantity = :quantity,
+                    unit_price = :unit_price,
+                    custom_method = :custom_method,
+                    custom_area = :custom_area,
+                    order_item_status = :order_item_status,
+                    supplier_status = :supplier_status,
+                    note_item = :note_item
+                    WHERE order_item_id = :order_item_id";
             
-            $_SESSION['success'] = 'Order item updated successfully!';
-            $this->redirect('/orders/' . $itemData->order_id . '/order-items');
-        } else {
-            $_SESSION['error'] = 'Failed to update order item.';
+            // Prepare parameters - ensure proper types and handle empty strings
+            $params = [
+                'order_item_id' => (int)$id,
+                'product_description' => (string)($data['product_description'] ?? ''),
+                'product_type' => (!empty($data['product_type']) ? $data['product_type'] : null),
+                'product_size' => (!empty($data['product_size']) ? $data['product_size'] : null),
+                'quantity' => (int)($data['quantity'] ?? 1),
+                'unit_price' => (float)($data['unit_price'] ?? 0),
+                'custom_method' => (!empty($data['custom_method']) ? $data['custom_method'] : null),
+                'custom_area' => (!empty($data['custom_area']) ? $data['custom_area'] : null),
+                'order_item_status' => $data['order_item_status'] ?? 'pending',
+                'supplier_status' => (!empty($data['supplier_status']) ? $data['supplier_status'] : null),
+                'note_item' => (!empty($data['note_item']) ? $data['note_item'] : null)
+            ];
+            
+            if ($isAjax) {
+                error_log('Direct SQL Update - Item ID from URL: ' . $id);
+                error_log('Direct SQL Update - Query: ' . $sql);
+                error_log('Direct SQL Update - Params: ' . json_encode($params));
+            }
+            
+            // Execute the update with direct PDO for better error handling
+            try {
+                $stmt = $connection->prepare($sql);
+                $updateResult = $stmt->execute($params);
+                
+                if (!$updateResult && $isAjax) {
+                    $errorInfo = $stmt->errorInfo();
+                    error_log('PDO Error Info: ' . json_encode($errorInfo));
+                    error_log('PDO Error Code: ' . $stmt->errorCode());
+                }
+            } catch (\PDOException $pdoEx) {
+                if ($isAjax) {
+                    error_log('PDO Exception during update: ' . $pdoEx->getMessage());
+                    error_log('PDO Exception Code: ' . $pdoEx->getCode());
+                }
+                $updateResult = false;
+            }
+            
+            if ($updateResult) {
+                // Verify the update by querying the database
+                $verifySQL = "SELECT * FROM order_items WHERE order_item_id = :id";
+                $verifyStmt = $db->query($verifySQL, ['id' => $id]);
+                $updatedItem = $verifyStmt ? $verifyStmt->fetch(\PDO::FETCH_ASSOC) : null;
+                
+                if ($isAjax) {
+                    error_log('Update Verification - Item after update: ' . json_encode($updatedItem));
+                }
+                
+                // Update order total using the existing order
+                $order = $itemData->getOrder();
+                if ($order) {
+                    $order->calculateTotal();
+                    // Sync order status from items
+                    $order->syncStatusFromItems();
+                }
+                
+                if ($isAjax) {
+                    $this->json([
+                        'success' => true, 
+                        'message' => 'Order item updated successfully!',
+                        'item' => [
+                            'id' => $id,
+                            'product_description' => $updatedItem['product_description'] ?? $params['product_description'],
+                            'quantity' => $updatedItem['quantity'] ?? $params['quantity'],
+                            'unit_price' => $updatedItem['unit_price'] ?? $params['unit_price'],
+                            'total_price' => ($updatedItem['quantity'] ?? $params['quantity']) * ($updatedItem['unit_price'] ?? $params['unit_price'])
+                        ]
+                    ]);
+                    return;
+                }
+                
+                $_SESSION['success'] = 'Order item updated successfully!';
+                $this->redirect('/orders/' . $itemData->order_id . '/order-items');
+            } else {
+                // Get last database error if available
+                $errorMessage = 'Failed to update order item.';
+                if ($isAjax) {
+                    error_log('OrderItem Update Failed - Update returned false');
+                    error_log('Check the PHP error log for PDO Error Info and Exception details');
+                    
+                    // Add diagnostic info to error message
+                    $errorMessage .= ' Check server logs for details. Item ID: ' . $id;
+                    
+                    $this->json(['success' => false, 'message' => $errorMessage]);
+                    return;
+                }
+                $_SESSION['error'] = $errorMessage;
+                $this->redirect('/order-items/' . $id . '/edit');
+            }
+        } catch (\Exception $e) {
+            error_log('OrderItem Update Exception: ' . $e->getMessage());
+            if ($isAjax) {
+                $this->json(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+                return;
+            }
+            $_SESSION['error'] = 'An error occurred while updating the item.';
             $this->redirect('/order-items/' . $id . '/edit');
         }
     }

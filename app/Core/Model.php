@@ -110,7 +110,17 @@ abstract class Model
         
         $filteredData = $this->filterFillable($data);
         
+        // Debug logging for AJAX requests
+        if (isset($_POST['ajax'])) {
+            error_log('Model Update - Table: ' . $this->table);
+            error_log('Model Update - Primary Key: ' . $this->primaryKey . ' = ' . ($this->attributes[$this->primaryKey] ?? 'NOT SET'));
+            error_log('Model Update - Filtered Data: ' . json_encode($filteredData));
+        }
+        
         if (empty($filteredData) || !isset($this->attributes[$this->primaryKey])) {
+            if (isset($_POST['ajax'])) {
+                error_log('Model Update Failed - Empty filtered data or no primary key');
+            }
             return false;
         }
         
@@ -122,6 +132,10 @@ abstract class Model
         $sql = "UPDATE {$this->table} SET " . implode(", ", $setParts) . 
                " WHERE {$this->primaryKey} = :primary_key";
         
+        if (isset($_POST['ajax'])) {
+            error_log('Model Update - SQL: ' . $sql);
+        }
+        
         $filteredData['primary_key'] = $this->attributes[$this->primaryKey];
         
         $stmt = $this->db->query($sql, $filteredData);
@@ -129,6 +143,10 @@ abstract class Model
         if ($stmt) {
             $this->attributes = array_merge($this->attributes, $filteredData);
             return true;
+        }
+        
+        if (isset($_POST['ajax'])) {
+            error_log('Model Update Failed - Database query returned false');
         }
         return false;
     }
