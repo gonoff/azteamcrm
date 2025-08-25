@@ -1,16 +1,35 @@
-/* Login Page Styles */
-/* Using White, Black, and Red color scheme */
+/* Login Page Styles - Redesigned */
+/* AZTEAM Brand Colors and Modern Design */
 
+:root {
+    --brand-red: #E5192B;
+    --brand-red-hover: #c41523;
+    --brand-navy: #1a2332;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --border-subtle: #e9ecef;
+    --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.08);
+    --shadow-hover: 0 15px 50px rgba(0, 0, 0, 0.12);
+}
+
+/* Body and Background */
 body.login-page {
-    background: linear-gradient(135deg, #000000 0%, #dc3545 100%);
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 20px;
     position: relative;
+    overflow: hidden;
+    
+    /* Subtle gradient background */
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    
+    /* Alternative: Navy to soft red gradient */
+    /* background: linear-gradient(135deg, var(--brand-navy) 0%, rgba(229, 25, 43, 0.15) 100%); */
 }
 
-/* Optional: Add a pattern overlay */
+/* Optional subtle pattern overlay */
 body.login-page::before {
     content: '';
     position: absolute;
@@ -19,93 +38,171 @@ body.login-page::before {
     right: 0;
     bottom: 0;
     background-image: 
-        repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px);
+        radial-gradient(circle at 20% 80%, rgba(229, 25, 43, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(26, 35, 50, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(229, 25, 43, 0.03) 0%, transparent 50%);
     pointer-events: none;
 }
 
-.login-card {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    padding: 40px;
+/* Login Container */
+.login-container {
     width: 100%;
-    max-width: 400px;
-    animation: slideUp 0.5s ease;
-    border-top: 4px solid #dc3545;
+    max-width: 420px;
     position: relative;
     z-index: 1;
+    animation: fadeInUp 0.6s ease;
 }
 
+/* Logo Section */
+.logo-section {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    animation: fadeIn 0.8s ease;
+}
+
+/* Ensure SVG logos render with their embedded colors */
+.logo-section svg {
+    width: auto;
+    height: 100%;
+}
+
+.logo-main {
+    height: 120px;
+    width: auto;
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+    /* Subtle shadow for depth */
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    transition: transform 0.3s ease;
+}
+
+.logo-main:hover {
+    transform: scale(1.05);
+}
+
+.tagline {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+    font-weight: 400;
+}
+
+/* Login Card */
+.login-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: var(--shadow-soft);
+    padding: 2.5rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.login-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+}
+
+/* Login Header */
 .login-header {
     text-align: center;
-    margin-bottom: 30px;
-    border-bottom: 2px solid #f8f9fa;
-    padding-bottom: 20px;
+    margin-bottom: 2rem;
 }
 
-.login-header h1 {
-    color: #000000;
-    font-size: 32px;
-    font-weight: 700;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
-
-.login-header h1 span {
-    color: #dc3545;
+.login-header h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
 }
 
 .login-header p {
-    color: #6c757d;
-    margin-top: 10px;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0;
 }
 
-.login-card .form-control {
-    padding: 12px;
-    font-size: 16px;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s;
+/* Form Styling */
+.form-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
 }
 
-.login-card .form-control:focus {
-    border-color: #dc3545;
-    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+.form-control {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1.5px solid var(--border-subtle);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    background-color: #fafbfc;
 }
 
-.login-card .form-label {
-    color: #000000;
+.form-control:focus {
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 3px rgba(229, 25, 43, 0.1);
+    background-color: white;
+    outline: none;
+}
+
+.form-control:hover {
+    border-color: #d0d5dd;
+}
+
+/* Submit Button */
+.btn-primary {
+    padding: 0.875rem;
+    font-size: 1rem;
     font-weight: 600;
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 1px;
-}
-
-.login-card .btn-primary {
-    padding: 12px;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    background: #dc3545;
+    background: var(--brand-red);
     border: none;
-    transition: all 0.3s;
-    text-transform: uppercase;
+    border-radius: 8px;
+    color: white;
+    transition: all 0.3s ease;
+    letter-spacing: 0.3px;
 }
 
-.login-card .btn-primary:hover {
-    background: #000000;
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
+.btn-primary:hover {
+    background: var(--brand-red-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(229, 25, 43, 0.25);
 }
 
-/* Animation */
-@keyframes slideUp {
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Alert Messages */
+.alert {
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    border: none;
+    animation: slideInDown 0.4s ease;
+}
+
+.alert-danger {
+    background-color: #fee;
+    color: #c41523;
+}
+
+/* Copyright */
+.copyright {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Animations */
+@keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(20px);
     }
     to {
         opacity: 1;
@@ -113,20 +210,99 @@ body.login-page::before {
     }
 }
 
-/* Error message */
-.login-card .alert {
-    animation: shake 0.5s;
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
-.login-card .alert-danger {
-    background-color: #f8d7da;
-    border: 2px solid #dc3545;
-    color: #721c24;
-    font-weight: 600;
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
-    20%, 40%, 60%, 80% { transform: translateX(10px); }
+/* Responsive Design */
+@media (max-width: 576px) {
+    body.login-page {
+        padding: 15px;
+    }
+    
+    .login-container {
+        max-width: 100%;
+    }
+    
+    .logo-main {
+        height: 100px;
+    }
+    
+    .logo-section {
+        margin-bottom: 2rem;
+    }
+    
+    .login-card {
+        padding: 2rem 1.5rem;
+        border-radius: 12px;
+    }
+    
+    .login-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .form-control {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.9375rem;
+    }
+    
+    .btn-primary {
+        padding: 0.75rem;
+        font-size: 0.9375rem;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .logo-main {
+        height: 130px;
+    }
+    
+    .login-container {
+        max-width: 380px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .logo-main {
+        height: 140px;
+    }
+    
+    .login-container {
+        max-width: 440px;
+    }
+    
+    .login-card {
+        padding: 3rem;
+    }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+    body.login-page {
+        background: linear-gradient(135deg, var(--brand-navy) 0%, #2c3e50 100%);
+    }
+    
+    .login-card {
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .tagline {
+        color: rgba(255, 255, 255, 0.7);
+    }
 }

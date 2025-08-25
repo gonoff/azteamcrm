@@ -366,6 +366,80 @@ class OrderController extends Controller
         $this->redirect('/orders/' . $id);
     }
     
+    public function updateShipping($id)
+    {
+        $this->requireAuth();
+        $this->verifyCsrf();
+        
+        if (!$this->isPost()) {
+            $this->redirect('/orders/' . $id);
+            return;
+        }
+        
+        $order = new Order();
+        $orderData = $order->find($id);
+        
+        if (!$orderData) {
+            $_SESSION['error'] = 'Order not found.';
+            $this->redirect('/orders');
+            return;
+        }
+        
+        $shippingAmount = floatval($_POST['shipping_amount'] ?? 0);
+        
+        // Ensure shipping amount is not negative
+        $shippingAmount = max(0, $shippingAmount);
+        
+        // Update shipping amount
+        $orderData->attributes['shipping_amount'] = $shippingAmount;
+        $orderData->shipping_amount = $shippingAmount;
+        
+        if ($orderData->update()) {
+            $_SESSION['success'] = 'Shipping cost updated successfully.';
+        } else {
+            $_SESSION['error'] = 'Failed to update shipping cost.';
+        }
+        
+        $this->redirect('/orders/' . $id);
+    }
+    
+    public function updateDiscount($id)
+    {
+        $this->requireAuth();
+        $this->verifyCsrf();
+        
+        if (!$this->isPost()) {
+            $this->redirect('/orders/' . $id);
+            return;
+        }
+        
+        $order = new Order();
+        $orderData = $order->find($id);
+        
+        if (!$orderData) {
+            $_SESSION['error'] = 'Order not found.';
+            $this->redirect('/orders');
+            return;
+        }
+        
+        $discountAmount = floatval($_POST['discount_amount'] ?? 0);
+        
+        // Ensure discount is not negative and not more than order total
+        $discountAmount = max(0, min($discountAmount, $orderData->order_total));
+        
+        // Update discount amount
+        $orderData->attributes['discount_amount'] = $discountAmount;
+        $orderData->discount_amount = $discountAmount;
+        
+        if ($orderData->update()) {
+            $_SESSION['success'] = 'Discount applied successfully.';
+        } else {
+            $_SESSION['error'] = 'Failed to apply discount.';
+        }
+        
+        $this->redirect('/orders/' . $id);
+    }
+    
     public function cancelOrder($id)
     {
         $this->requireAuth();

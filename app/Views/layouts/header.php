@@ -19,7 +19,10 @@
             <!-- Sidebar -->
             <nav class="col-md-2 d-md-block sidebar">
                 <div class="position-sticky pt-3">
-                    <h5 class="text-white px-3 mb-3">AZTEAM CRM</h5>
+                    <div class="sidebar-logo-container px-3 mb-3">
+                        <img src="/azteamcrm/assets/images/logo-icon.svg" alt="AZTEAM" class="logo-sidebar">
+                        <span class="logo-text">AZTEAM</span>
+                    </div>
                     <ul class="nav flex-column">
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/dashboard">

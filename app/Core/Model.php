@@ -26,6 +26,10 @@ abstract class Model
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($result) {
                 $this->attributes = $result;
+                // Also set properties directly for compatibility
+                foreach ($result as $key => $value) {
+                    $this->$key = $value;
+                }
                 return $this;
             }
         }
@@ -225,6 +229,11 @@ abstract class Model
     public function __set($name, $value)
     {
         $this->attributes[$name] = $value;
+    }
+    
+    public function __isset($name)
+    {
+        return isset($this->attributes[$name]);
     }
     
     public function toArray()

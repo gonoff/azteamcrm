@@ -10,11 +10,9 @@
             <i class="bi bi-pencil"></i> Edit Order
         </a>
         
-        <?php if ($order->getBalanceDue() > 0): ?>
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#recordPaymentModal">
-                <i class="bi bi-credit-card-2-front"></i> Record Payment
-            </button>
-        <?php endif; ?>
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#recordPaymentModal">
+            <i class="bi bi-credit-card-2-front"></i> Payments
+        </button>
         
         <?php if (!in_array($order->order_status, ['cancelled', 'completed'])): ?>
             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">
@@ -104,17 +102,6 @@
                         <?= htmlspecialchars($user ? $user->full_name : 'Unknown') ?>
                     </div>
                 </div>
-                
-                <?php if ($order->order_notes): ?>
-                <div class="row">
-                    <div class="col-12">
-                        <strong>Order Notes:</strong><br>
-                        <div class="alert alert-light">
-                            <?= nl2br(htmlspecialchars($order->order_notes)) ?>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
                 
                 <div class="row">
                     <div class="col-12">
@@ -222,9 +209,17 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Order Items</h5>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createOrderItemModal">
-                    <i class="bi bi-plus"></i> Add Item
-                </button>
+                <div>
+                    <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#shippingModal">
+                        <i class="bi bi-truck"></i> Shipping
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#discountModal">
+                        <i class="bi bi-tag"></i> Discount
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createOrderItemModal">
+                        <i class="bi bi-plus"></i> Add Item
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <?php if (empty($orderItems)): ?>
@@ -332,10 +327,28 @@
     </div>
 </div>
 
-<!-- Bottom Section: Order Summary Full Width -->
+<!-- Bottom Section: Order Notes and Order Summary -->
 <div class="row">
-    <div class="col-12">
-        <div class="card mb-4">
+    <!-- Order Notes Card -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Order Notes</h5>
+            </div>
+            <div class="card-body">
+                <?php if (!empty($order->order_notes)): ?>
+                    <div class="order-notes-content"><?= htmlspecialchars($order->order_notes) ?></div>
+                <?php else: ?>
+                    <p class="text-muted fst-italic">No notes added for this order.</p>
+                    <small class="text-muted">Notes can be added when editing the order.</small>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Order Summary Card -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">Order Summary</h5>
             </div>
@@ -411,41 +424,11 @@
                     <i class="bi bi-check-circle"></i> Order Fully Paid
                 </div>
                 <?php endif; ?>
-                
-                <!-- Payment History -->
-                <?php 
-                $payments = $order->getPaymentHistory();
-                if (!empty($payments)): 
-                ?>
-                <hr>
-                <h6>Payment History</h6>
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Method</th>
-                                <th>By</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($payments as $payment): ?>
-                            <tr>
-                                <td><?= date('M d, Y', strtotime($payment->payment_date)) ?></td>
-                                <td>$<?= number_format($payment->payment_amount, 2) ?></td>
-                                <td><?= htmlspecialchars($payment->payment_method ?: 'N/A') ?></td>
-                                <td><?= htmlspecialchars($payment->recorded_by_name) ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php endif; ?>
             </div>
         </div>
     </div>
 </div>
+
 
 <!-- Delete Order Modal -->
 <?php if ($_SESSION['user_role'] === 'administrator'): ?>
@@ -828,17 +811,18 @@ document.addEventListener('DOMContentLoaded', function() {
             input.select();
             
             // Handle save on blur or enter
+            const spanElement = this; // Save reference for use in promises
             const saveField = () => {
                 const newValue = input.value;
-                const itemId = this.closest('tr').getAttribute('data-item-id');
+                const itemId = spanElement.closest('tr').getAttribute('data-item-id');
                 
                 // Update the display
                 if (isPrice) {
-                    this.innerHTML = parseFloat(newValue).toFixed(2);
+                    spanElement.innerHTML = parseFloat(newValue).toFixed(2);
                 } else {
-                    this.innerHTML = newValue;
+                    spanElement.innerHTML = newValue;
                 }
-                this.setAttribute('data-value', newValue);
+                spanElement.setAttribute('data-value', newValue);
                 
                 // Send update to server
                 fetch('/azteamcrm/order-items/' + itemId + '/update-inline', {
@@ -848,7 +832,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: 'csrf_token=<?= $csrf_token ?>&field=' + fieldName + '&value=' + newValue
                 })
-                .then(response => response.json())
+                .then(response => {
+                    // First check if response is ok
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    // Try to parse as JSON
+                    return response.json().catch(() => {
+                        throw new Error('Response was not valid JSON');
+                    });
+                })
                 .then(data => {
                     if (data.success) {
                         // Update total if quantity or price changed
@@ -865,14 +858,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     } else {
+                        console.error('Update failed:', data.message);
                         alert('Failed to update field: ' + (data.message || 'Unknown error'));
                         location.reload();
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    alert('Failed to update field');
-                    location.reload();
+                    console.error('Error updating field:', error.message || error);
+                    // Don't show alert if update was actually successful
+                    // Check if the value in DOM matches what we tried to save
+                    const currentDisplayValue = spanElement.getAttribute('data-value');
+                    if (currentDisplayValue !== newValue) {
+                        alert('Failed to update field: ' + (error.message || 'Unknown error'));
+                        location.reload();
+                    }
                 });
             };
             
@@ -1462,64 +1461,292 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 <?php endif; ?>
 
-<!-- Record Payment Modal -->
-<?php if ($order->getBalanceDue() > 0): ?>
+<!-- Payments Modal (Tabbed) -->
+<?php 
+$payments = $order->getPaymentHistory(); 
+$balanceDue = $order->getBalanceDue();
+// Determine which tab to show by default
+$defaultTab = ($balanceDue > 0) ? 'record' : 'history';
+?>
 <div class="modal fade" id="recordPaymentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-credit-card-2-front"></i> Payments - Order #<?= $order->order_id ?>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Nav tabs -->
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link <?= $defaultTab === 'record' ? 'active' : '' ?>" 
+                                id="record-payment-tab" data-bs-toggle="tab" data-bs-target="#record-payment" 
+                                type="button" role="tab">
+                            <i class="bi bi-plus-circle"></i> Record Payment
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link <?= $defaultTab === 'history' ? 'active' : '' ?>" 
+                                id="payment-history-tab" data-bs-toggle="tab" data-bs-target="#payment-history" 
+                                type="button" role="tab">
+                            <i class="bi bi-clock-history"></i> Payment History
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab content -->
+                <div class="tab-content">
+                    <!-- Record Payment Tab -->
+                    <div class="tab-pane fade <?= $defaultTab === 'record' ? 'show active' : '' ?>" 
+                         id="record-payment" role="tabpanel">
+                        <?php if ($balanceDue > 0): ?>
+                            <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/process-payment">
+                                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> Recording payment for Order #<?= $order->order_id ?>
+                                    <br>
+                                    <strong>Balance Due: $<?= number_format($balanceDue, 2) ?></strong>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="payment_amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" id="payment_amount" name="payment_amount" 
+                                               step="0.01" min="0.01" max="<?= $balanceDue ?>"
+                                               value="<?= $balanceDue ?>" required>
+                                    </div>
+                                    <small class="text-muted">Maximum: $<?= number_format($balanceDue, 2) ?></small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="payment_method" class="form-label">Payment Method</label>
+                                    <select class="form-select" id="payment_method" name="payment_method">
+                                        <option value="">Select Method (Optional)</option>
+                                        <option value="cash">Cash</option>
+                                        <option value="check">Check</option>
+                                        <option value="credit_card">Credit Card</option>
+                                        <option value="debit_card">Debit Card</option>
+                                        <option value="bank_transfer">Bank Transfer</option>
+                                        <option value="paypal">PayPal</option>
+                                        <option value="venmo">Venmo</option>
+                                        <option value="zelle">Zelle</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="payment_notes" class="form-label">Notes</label>
+                                    <textarea class="form-control" id="payment_notes" name="payment_notes" rows="3" 
+                                              placeholder="Optional notes about this payment..."></textarea>
+                                </div>
+                                
+                                <div class="text-end">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i> Record Payment
+                                    </button>
+                                </div>
+                            </form>
+                        <?php else: ?>
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i> This order has been fully paid.
+                                <br>
+                                <strong>Total Paid: $<?= number_format($order->amount_paid, 2) ?></strong>
+                            </div>
+                            <p class="text-muted">No balance due. View the Payment History tab to see all payments.</p>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Payment History Tab -->
+                    <div class="tab-pane fade <?= $defaultTab === 'history' ? 'show active' : '' ?>" 
+                         id="payment-history" role="tabpanel">
+                        
+                        <!-- Payment Summary -->
+                        <div class="alert alert-light border mb-3">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <small class="text-muted">Order Total</small>
+                                    <div class="fw-bold">$<?= number_format($order->getTotalAmount(), 2) ?></div>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Total Paid</small>
+                                    <div class="fw-bold text-success">$<?= number_format($order->amount_paid, 2) ?></div>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Balance Due</small>
+                                    <div class="fw-bold <?= $balanceDue > 0 ? 'text-danger' : 'text-success' ?>">
+                                        $<?= number_format($balanceDue, 2) ?>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Payment Status</small>
+                                    <div><?= $order->getPaymentStatusBadge() ?></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <?php if (empty($payments)): ?>
+                            <div class="text-center py-4">
+                                <i class="bi bi-credit-card text-muted" style="font-size: 3rem;"></i>
+                                <p class="text-muted mt-3">No payments recorded yet</p>
+                                <?php if ($balanceDue > 0): ?>
+                                    <button type="button" class="btn btn-success btn-sm" 
+                                            onclick="document.getElementById('record-payment-tab').click()">
+                                        <i class="bi bi-plus-circle"></i> Record First Payment
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-hover">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Method</th>
+                                            <th>Notes</th>
+                                            <th>Recorded By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($payments as $payment): ?>
+                                        <tr>
+                                            <td>
+                                                <strong><?= date('M d, Y', strtotime($payment->payment_date)) ?></strong>
+                                                <br>
+                                                <small class="text-muted"><?= date('g:i A', strtotime($payment->payment_date)) ?></small>
+                                            </td>
+                                            <td>
+                                                <strong class="text-success">$<?= number_format($payment->payment_amount, 2) ?></strong>
+                                            </td>
+                                            <td>
+                                                <?php 
+                                                $methodIcons = [
+                                                    'cash' => '<i class="bi bi-cash"></i>',
+                                                    'credit_card' => '<i class="bi bi-credit-card"></i>',
+                                                    'debit_card' => '<i class="bi bi-credit-card-2-front"></i>',
+                                                    'check' => '<i class="bi bi-bank"></i>',
+                                                    'bank_transfer' => '<i class="bi bi-bank2"></i>',
+                                                    'paypal' => '<i class="bi bi-paypal"></i>',
+                                                    'venmo' => '<i class="bi bi-phone"></i>',
+                                                    'zelle' => '<i class="bi bi-phone-fill"></i>',
+                                                    'other' => '<i class="bi bi-wallet2"></i>'
+                                                ];
+                                                $icon = $methodIcons[$payment->payment_method] ?? '<i class="bi bi-wallet2"></i>';
+                                                ?>
+                                                <?= $icon ?> <?= ucwords(str_replace('_', ' ', $payment->payment_method ?: 'Not Specified')) ?>
+                                            </td>
+                                            <td>
+                                                <?= htmlspecialchars($payment->payment_notes ?: '-') ?>
+                                            </td>
+                                            <td>
+                                                <i class="bi bi-person-circle"></i> <?= htmlspecialchars($payment->recorded_by_name) ?>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shipping Modal -->
+<div class="modal fade" id="shippingModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Record Payment</h5>
+                <h5 class="modal-title">Update Shipping Cost</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/process-payment">
+            <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/update-shipping">
                 <div class="modal-body">
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Recording payment for Order #<?= $order->order_id ?>
+                        <i class="bi bi-info-circle"></i> Set shipping cost for Order #<?= $order->order_id ?>
                         <br>
-                        <small>Balance Due: $<?= number_format($order->getBalanceDue(), 2) ?></small>
+                        <small>Current Shipping: $<?= number_format($order->shipping_amount, 2) ?></small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="payment_amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                        <label for="shipping_amount" class="form-label">Shipping Amount</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="payment_amount" name="payment_amount" 
-                                   step="0.01" min="0.01" max="<?= $order->getBalanceDue() ?>"
-                                   value="<?= $order->getBalanceDue() ?>" required>
+                            <input type="number" class="form-control" id="shipping_amount" name="shipping_amount" 
+                                   step="0.01" min="0" 
+                                   value="<?= $order->shipping_amount ?>" 
+                                   placeholder="0.00">
                         </div>
-                        <small class="text-muted">Maximum: $<?= number_format($order->getBalanceDue(), 2) ?></small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="payment_method" class="form-label">Payment Method</label>
-                        <select class="form-select" id="payment_method" name="payment_method">
-                            <option value="">Select Method (Optional)</option>
-                            <option value="cash">Cash</option>
-                            <option value="check">Check</option>
-                            <option value="credit_card">Credit Card</option>
-                            <option value="bank_transfer">Bank Transfer</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="payment_notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="payment_notes" name="payment_notes" rows="3" 
-                                  placeholder="Optional notes about this payment..."></textarea>
+                        <small class="text-muted">Enter 0 for free shipping</small>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle"></i> Record Payment
+                    <button type="submit" class="btn btn-info">
+                        <i class="bi bi-check-circle"></i> Update Shipping
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-<?php endif; ?>
+
+<!-- Discount Modal -->
+<div class="modal fade" id="discountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Apply Discount</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/azteamcrm/orders/<?= $order->order_id ?>/update-discount">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Set discount for Order #<?= $order->order_id ?>
+                        <br>
+                        <small>Current Discount: $<?= number_format($order->discount_amount, 2) ?></small>
+                        <br>
+                        <small>Order Subtotal: $<?= number_format($order->order_total, 2) ?></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="discount_amount" class="form-label">Discount Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="discount_amount" name="discount_amount" 
+                                   step="0.01" min="0" max="<?= $order->order_total ?>"
+                                   value="<?= $order->discount_amount ?>" 
+                                   placeholder="0.00">
+                        </div>
+                        <small class="text-muted">Enter 0 to remove discount</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="discount_reason" class="form-label">Reason (Optional)</label>
+                        <input type="text" class="form-control" id="discount_reason" name="discount_reason" 
+                               placeholder="e.g., Loyalty discount, Bulk order, etc.">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-check-circle"></i> Apply Discount
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <?php include dirname(__DIR__) . '/layouts/footer.php'; ?>

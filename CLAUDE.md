@@ -167,8 +167,13 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
   - JavaScript bridge ensures customer ID is always set in hidden input
 - Edit existing orders
 - Delete orders (admin only)
-- View detailed order information with customer links
-- Payment status management (unpaid/partial/paid)
+- **Improved Order Details View** (NEW):
+  - Restructured layout with better information hierarchy
+  - Order Details and Production Status cards side-by-side at top
+  - Full-width Order Items table for better visibility
+  - Full-width Order Summary at bottom for clearer financial information
+  - All order item management via modals (no separate page needed)
+- Payment status management via modal (unpaid/partial/paid)
 - Order status management (pending/processing/completed/cancelled/on_hold)
 - Rush order detection (auto-flags orders due within 7 days)
 - Order status badges (rush, overdue, due soon)
@@ -213,13 +218,17 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 
 #### Order Item Management Module (formerly Line Items)
 - Full CRUD operations for order items within orders
-- Add/edit/delete individual products in orders
+- **Modal-based Management** (NEW):
+  - Add new items via modal (no page redirect)
+  - Edit items via modal with all fields accessible
+  - Both modals use AJAX for seamless updates
+  - Automatic page refresh after successful operations
 - Single status tracking (pending → in_production → completed)
 - Pricing at item level (unit_price, auto-calculated total_price)
 - Product type selection (shirt, apron, scrub, hat, bag, etc.)
 - Size management with proper field name (product_size)
 - Customization method tracking (custom_method field)
-- Customization areas (custom_area field)
+- **Multiple customization areas** (NEW): Can select Front, Back, Sleeve simultaneously
 - Supplier status tracking (separate from item status)
 - Special notes per item (note_item field)
 - Quantity tracking with price calculations
@@ -358,11 +367,11 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 '/customers/{id}/toggle-status' => 'CustomerController@toggleStatus' // Toggle active status
 
 // Order Item Management (formerly Line Items)
-'/orders/{order_id}/order-items' => 'OrderItemController@index'        // List order items
-'/orders/{order_id}/order-items/create' => 'OrderItemController@create' // Add new item
-'/orders/{order_id}/order-items/store' => 'OrderItemController@store'   // Save new item
-'/order-items/{id}/edit' => 'OrderItemController@edit'                  // Edit item
-'/order-items/{id}/update' => 'OrderItemController@update'              // Update item
+// Note: Index route removed - order items are now displayed directly in order show page
+'/orders/{order_id}/order-items/create' => 'OrderItemController@create' // Add new item (modal)
+'/orders/{order_id}/order-items/store' => 'OrderItemController@store'   // Save new item (AJAX)
+'/order-items/{id}/edit' => 'OrderItemController@edit'                  // Edit item (modal)
+'/order-items/{id}/update' => 'OrderItemController@update'              // Update item (AJAX)
 '/order-items/{id}/delete' => 'OrderItemController@delete'              // Delete item
 '/order-items/{id}/update-status' => 'OrderItemController@updateStatus' // Update status AJAX
 
