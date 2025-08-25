@@ -320,6 +320,22 @@ class OrderController extends Controller
             return;
         }
         
+        // Security check: Prevent deletion if order has items or payments
+        $orderItems = $orderData->getOrderItems();
+        $payments = $orderData->getPaymentHistory();
+        
+        if (!empty($orderItems)) {
+            $this->setError('Cannot delete order. Please remove all order items first.');
+            $this->redirect('/orders/' . $id);
+            return;
+        }
+        
+        if (!empty($payments)) {
+            $this->setError('Cannot delete order. This order has payment history and cannot be deleted.');
+            $this->redirect('/orders/' . $id);
+            return;
+        }
+        
         // Use error handling wrapper for database operation
         $this->handleDatabaseOperation(
             function() use ($orderData) {

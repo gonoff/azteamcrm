@@ -35,9 +35,7 @@ return [
     '/orders/{id}/cancel' => 'OrderController@cancelOrder',
     '/orders/{id}/process-payment' => 'OrderController@processPayment',
     
-    // Order Items
-    // Index route removed - order items are now displayed in the order show page
-    // '/orders/{order_id}/order-items' => 'OrderItemController@index',
+    // Order Items (managed via modals in order show page)
     '/orders/{order_id}/order-items/create' => 'OrderItemController@create',
     '/orders/{order_id}/order-items/store' => 'OrderItemController@store',
     '/order-items/{id}/edit' => 'OrderItemController@edit',

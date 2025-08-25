@@ -69,7 +69,7 @@ class OrderItemController extends Controller
                 $this->json(['success' => false, 'message' => 'Invalid request method']);
                 return;
             }
-            $this->redirect('/orders/' . $order_id . '/order-items');
+            $this->redirect('/orders/' . $order_id);
         }
         
         $this->verifyCsrf();
@@ -102,7 +102,7 @@ class OrderItemController extends Controller
             }
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
-            $this->redirect('/orders/' . $order_id . '/order-items/create');
+            $this->redirect('/orders/' . $order_id);
         }
         
         // Set required fields
@@ -138,14 +138,14 @@ class OrderItemController extends Controller
             }
             
             $_SESSION['success'] = 'Order item added successfully!';
-            $this->redirect('/orders/' . $order_id . '/order-items');
+            $this->redirect('/orders/' . $order_id);
         } else {
             if ($isAjax) {
                 $this->json(['success' => false, 'message' => 'Failed to add order item.']);
                 return;
             }
             $_SESSION['error'] = 'Failed to add order item.';
-            $this->redirect('/orders/' . $order_id . '/order-items/create');
+            $this->redirect('/orders/' . $order_id);
         }
     }
     
@@ -217,7 +217,7 @@ class OrderItemController extends Controller
             }
             $_SESSION['errors'] = $errors;
             $_SESSION['old_input'] = $data;
-            $this->redirect('/order-items/' . $id . '/edit');
+            $this->redirect('/orders/' . $itemData->order_id);
         }
         
         // Handle optional fields
@@ -331,7 +331,7 @@ class OrderItemController extends Controller
                 }
                 
                 $_SESSION['success'] = 'Order item updated successfully!';
-                $this->redirect('/orders/' . $itemData->order_id . '/order-items');
+                $this->redirect('/orders/' . $itemData->order_id);
             } else {
                 // Get last database error if available
                 $errorMessage = 'Failed to update order item.';
@@ -346,7 +346,7 @@ class OrderItemController extends Controller
                     return;
                 }
                 $_SESSION['error'] = $errorMessage;
-                $this->redirect('/order-items/' . $id . '/edit');
+                $this->redirect('/orders/' . $itemData->order_id);
             }
         } catch (\Exception $e) {
             error_log('OrderItem Update Exception: ' . $e->getMessage());
@@ -355,7 +355,7 @@ class OrderItemController extends Controller
                 return;
             }
             $_SESSION['error'] = 'An error occurred while updating the item.';
-            $this->redirect('/order-items/' . $id . '/edit');
+            $this->redirect('/orders/' . $itemData->order_id);
         }
     }
     
@@ -388,7 +388,7 @@ class OrderItemController extends Controller
             $_SESSION['error'] = 'Failed to delete order item.';
         }
         
-        $this->redirect('/orders/' . $order_id . '/order-items');
+        $this->redirect('/orders/' . $order_id);
     }
     
     public function updateStatus($id)
@@ -478,7 +478,6 @@ class OrderItemController extends Controller
         
         // Update the field
         $itemData->$field = $value;
-        $itemData->attributes[$field] = $value;
         
         if ($itemData->update()) {
             // Recalculate order total if price/quantity changed

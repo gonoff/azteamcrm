@@ -166,10 +166,6 @@
                                                    class="btn btn-sm btn-outline-warning" title="Edit">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <a href="/azteamcrm/orders/<?= $order->order_id ?>/order-items" 
-                                                   class="btn btn-sm btn-outline-info" title="Items">
-                                                    <i class="bi bi-list-ul"></i>
-                                                </a>
                                             </div>
                                         </td>
                                     </tr>

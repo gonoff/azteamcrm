@@ -20,7 +20,13 @@
             </button>
         <?php endif; ?>
         
-        <?php if ($_SESSION['user_role'] === 'administrator'): ?>
+        <?php 
+        // Only show delete button if user is admin AND order has no items or payments
+        $canDelete = $_SESSION['user_role'] === 'administrator' && 
+                     empty($orderItems) && 
+                     empty($order->getPaymentHistory());
+        if ($canDelete): 
+        ?>
             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteOrderModal">
                 <i class="bi bi-trash"></i> Delete Order
             </button>
@@ -299,22 +305,34 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <button type="button" 
-                                                class="btn btn-sm btn-outline-secondary edit-item-modal" 
-                                                title="Edit Item"
-                                                data-item-id="<?= $item->order_item_id ?>"
-                                                data-product-description="<?= htmlspecialchars($item->product_description) ?>"
-                                                data-product-type="<?= $item->product_type ?>"
-                                                data-product-size="<?= $item->product_size ?>"
-                                                data-quantity="<?= $item->quantity ?>"
-                                                data-unit-price="<?= $item->unit_price ?>"
-                                                data-custom-method="<?= $item->custom_method ?>"
-                                                data-custom-area="<?= htmlspecialchars($item->custom_area ?? '') ?>"
-                                                data-order-item-status="<?= $item->order_item_status ?>"
-                                                data-supplier-status="<?= $item->supplier_status ?>"
-                                                data-note-item="<?= htmlspecialchars($item->note_item ?? '') ?>">
-                                            <i class="bi bi-pencil"></i>
-                                        </button>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-secondary edit-item-modal" 
+                                                    title="Edit Item"
+                                                    data-item-id="<?= $item->order_item_id ?>"
+                                                    data-product-description="<?= htmlspecialchars($item->product_description) ?>"
+                                                    data-product-type="<?= $item->product_type ?>"
+                                                    data-product-size="<?= $item->product_size ?>"
+                                                    data-quantity="<?= $item->quantity ?>"
+                                                    data-unit-price="<?= $item->unit_price ?>"
+                                                    data-custom-method="<?= $item->custom_method ?>"
+                                                    data-custom-area="<?= htmlspecialchars($item->custom_area ?? '') ?>"
+                                                    data-order-item-status="<?= $item->order_item_status ?>"
+                                                    data-supplier-status="<?= $item->supplier_status ?>"
+                                                    data-note-item="<?= htmlspecialchars($item->note_item ?? '') ?>">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <form method="POST" action="/azteamcrm/order-items/<?= $item->order_item_id ?>/delete" 
+                                                  class="d-inline delete-item-form">
+                                                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                                <button type="submit" 
+                                                        class="btn btn-sm btn-outline-danger delete-item-btn" 
+                                                        title="Delete Item"
+                                                        data-item-desc="<?= htmlspecialchars($item->product_description) ?>">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -431,7 +449,7 @@
 
 
 <!-- Delete Order Modal -->
-<?php if ($_SESSION['user_role'] === 'administrator'): ?>
+<?php if ($canDelete): ?>
 <div class="modal fade" id="deleteOrderModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -441,7 +459,14 @@
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete this order for <strong><?= htmlspecialchars($customer ? $customer->full_name : 'Unknown Customer') ?></strong>?</p>
-                <p class="text-danger">This action cannot be undone and will also delete all associated order items.</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> This order can be deleted because:
+                    <ul class="mb-0">
+                        <li>It has no order items</li>
+                        <li>It has no payment history</li>
+                    </ul>
+                </div>
+                <p class="text-danger">This action cannot be undone.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -812,38 +837,71 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Handle save on blur or enter
             const spanElement = this; // Save reference for use in promises
+            let isSaving = false; // Prevent multiple saves
+            
             const saveField = () => {
+                if (isSaving) return; // Prevent double execution
+                isSaving = true;
+                
                 const newValue = input.value;
                 const itemId = spanElement.closest('tr').getAttribute('data-item-id');
                 
-                // Update the display
-                if (isPrice) {
-                    spanElement.innerHTML = parseFloat(newValue).toFixed(2);
-                } else {
-                    spanElement.innerHTML = newValue;
-                }
-                spanElement.setAttribute('data-value', newValue);
+                // Debug logging
+                console.log('Updating field:', fieldName, 'Item ID:', itemId, 'New value:', newValue);
+                
+                // Defer DOM update to avoid removing element during its own event
+                setTimeout(() => {
+                    // Update the display
+                    if (isPrice) {
+                        spanElement.innerHTML = parseFloat(newValue).toFixed(2);
+                    } else {
+                        spanElement.innerHTML = newValue;
+                    }
+                    spanElement.setAttribute('data-value', newValue);
+                }, 0);
                 
                 // Send update to server
                 fetch('/azteamcrm/order-items/' + itemId + '/update-inline', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
                     },
                     body: 'csrf_token=<?= $csrf_token ?>&field=' + fieldName + '&value=' + newValue
                 })
-                .then(response => {
+                .then(async response => {
                     // First check if response is ok
                     if (!response.ok) {
                         throw new Error('Network response was not ok: ' + response.status);
                     }
-                    // Try to parse as JSON
-                    return response.json().catch(() => {
-                        throw new Error('Response was not valid JSON');
-                    });
+                    
+                    // Clone response to read it twice if needed
+                    const responseClone = response.clone();
+                    
+                    try {
+                        // Try to parse as JSON
+                        return await response.json();
+                    } catch (jsonError) {
+                        // If JSON parsing fails, read as text to debug
+                        const text = await responseClone.text();
+                        console.error('Response was not JSON. Received:', text.substring(0, 500));
+                        
+                        // Check for common issues
+                        if (text.includes('login') || text.includes('Login')) {
+                            throw new Error('Session expired. Please refresh the page and login again.');
+                        }
+                        if (text.includes('CSRF token validation failed')) {
+                            throw new Error('Security token expired. Please refresh the page.');
+                        }
+                        
+                        throw new Error('Server did not return valid JSON. Check console for details.');
+                    }
                 })
                 .then(data => {
                     if (data.success) {
+                        isSaving = false; // Reset flag on success
                         // Update total if quantity or price changed
                         if (fieldName === 'quantity' || fieldName === 'unit_price') {
                             const row = document.querySelector('tr[data-item-id="' + itemId + '"]');
@@ -858,6 +916,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     } else {
+                        isSaving = false; // Reset flag on failure
                         console.error('Update failed:', data.message);
                         alert('Failed to update field: ' + (data.message || 'Unknown error'));
                         location.reload();
@@ -865,6 +924,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(error => {
                     console.error('Error updating field:', error.message || error);
+                    isSaving = false; // Reset flag on error
                     // Don't show alert if update was actually successful
                     // Check if the value in DOM matches what we tried to save
                     const currentDisplayValue = spanElement.getAttribute('data-value');
@@ -936,8 +996,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch('/azteamcrm/order-items/' + itemId + '/update-status', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             },
             body: 'csrf_token=<?= $csrf_token ?>&status_type=order_item_status&status=' + newStatus
         })
@@ -964,8 +1027,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch('/azteamcrm/order-items/' + itemId + '/update-status', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             },
             body: 'csrf_token=<?= $csrf_token ?>&status_type=supplier_status&status=' + newStatus
         })
@@ -1431,6 +1497,31 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // Handle delete item confirmation
+    const deleteItemForms = document.querySelectorAll('.delete-item-form');
+    deleteItemForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const button = this.querySelector('.delete-item-btn');
+            const itemDesc = button.dataset.itemDesc;
+            
+            // Show confirmation dialog
+            const confirmMessage = itemDesc 
+                ? `Are you sure you want to delete "${itemDesc}"?`
+                : 'Are you sure you want to delete this item?';
+            
+            if (confirm(confirmMessage)) {
+                // Disable button to prevent double submission
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                
+                // Submit the form
+                this.submit();
+            }
+        });
+    });
 });
 </script>
 

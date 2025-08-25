@@ -51,6 +51,13 @@ class Controller
         return $_SERVER['REQUEST_METHOD'] === 'POST';
     }
     
+    protected function isAjax()
+    {
+        return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest' ||
+               (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+    }
+    
     protected function isGet()
     {
         return $_SERVER['REQUEST_METHOD'] === 'GET';
@@ -64,7 +71,11 @@ class Controller
         
         // Check if user is logged in
         if (!isset($_SESSION['user_id'])) {
-            $this->redirect('/login');
+            if ($this->isAjax()) {
+                $this->json(['success' => false, 'message' => 'Session expired', 'redirect' => '/azteamcrm/login'], 401);
+            } else {
+                $this->redirect('/login');
+            }
         }
         
         // Check session timeout (30 minutes of inactivity)
@@ -117,8 +128,12 @@ class Controller
     protected function verifyCsrf()
     {
         if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-            http_response_code(403);
-            die("CSRF token validation failed");
+            if ($this->isAjax()) {
+                $this->json(['success' => false, 'message' => 'CSRF token validation failed'], 403);
+            } else {
+                http_response_code(403);
+                die("CSRF token validation failed");
+            }
         }
     }
     
