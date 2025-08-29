@@ -43,7 +43,8 @@ class User extends Model
     public function getOrders()
     {
         $order = new Order();
-        return $order->where('captured_by_user_id', '=', $this->id);
+        // Fetch orders associated with this user
+        return $order->where('user_id', '=', $this->id);
     }
     
     public function getFullName()
