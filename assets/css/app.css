@@ -137,127 +137,273 @@ a:hover {
 }
 
 /* =================================================================
-   SIDEBAR NAVIGATION - Enhanced Dark Theme
+   SIDEBAR NAVIGATION - Fixed Positioning with Dynamic Layout
    ================================================================= */
-.sidebar {
-  min-height: 100vh;
-  background: linear-gradient(180deg, var(--neutral-900) 0%, var(--neutral-850) 100%);
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
-  position: relative;
-}
-
-/* Subtle pattern overlay */
-.sidebar::before {
-  content: '';
-  position: absolute;
+.sidebar-fixed {
+  position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 35px,
-      rgba(255,255,255,0.01) 35px,
-      rgba(255,255,255,0.01) 70px
-    );
-  pointer-events: none;
+  height: 100vh;
+  z-index: 1000;
+  background: #1a1d23;
+  border-right: 1px solid #2d3139;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-/* Logo Container */
-.sidebar-logo-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 1.5rem 1rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 1.5rem;
-  position: relative;
-  z-index: 1;
+/* Collapsible States */
+.sidebar-fixed.expanded {
+  width: 220px !important;
 }
+
+.sidebar-fixed.collapsed {
+  width: 60px !important;
+}
+
+.sidebar-fixed.collapsed .sidebar-logo-container {
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 0.5rem !important;
+  gap: 0.25rem !important;
+}
+
+.sidebar-fixed.collapsed .sidebar-logo-container .logo-content {
+  justify-content: center !important;
+}
+
+.sidebar-fixed.collapsed .nav-item .nav-link {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 44px !important;
+  height: 44px !important;
+  padding: 0 !important;
+  margin: 4px auto !important;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.sidebar-fixed.collapsed .nav-item .nav-link i {
+  width: 20px !important;
+  height: 20px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  margin: 0 !important;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Nav text visibility control */
+.nav-text {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+}
+
+.sidebar-fixed.collapsed .nav-text {
+  display: none !important;
+}
+
+/* Optimize parent container for perfect alignment */
+.sidebar-fixed.collapsed .nav.flex-column {
+  align-items: center;
+  width: 100%;
+}
+
+.sidebar-fixed.collapsed .nav-item {
+  width: auto;
+  margin-bottom: 4px;
+}
+
+.sidebar-fixed.expanded .nav-text {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Modern Sidebar Toggle Button - Vertical Layout */
+nav.sidebar-fixed .sidebar-toggle {
+  position: static !important;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #9ca3af;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  padding: 0;
+  flex-shrink: 0 !important;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-toggle:active {
+  transform: scale(0.95);
+}
+
+.sidebar-toggle i {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-fixed.collapsed .sidebar-toggle i {
+  transform: rotate(180deg);
+}
+
+.sidebar-fixed.collapsed .sidebar-toggle {
+  position: static !important;
+  width: 20px;
+  height: 20px;
+}
+
+/* Main Content Adjustments - Dynamic Layout Support with Width Constraints */
+.main-content {
+  margin-left: 220px; /* Default for expanded sidebar */
+  width: calc(100vw - 220px); /* Constrain width to prevent viewport overflow */
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 100vh;
+  padding-top: 0;
+  box-sizing: border-box;
+  overflow-x: auto; /* Handle edge cases with horizontal scroll if needed */
+}
+
+/* Legacy support for existing #mainContent ID */
+#mainContent {
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapsed State Visual Enhancements */
+.sidebar-fixed.collapsed .logo-sidebar {
+  margin: 0 auto;
+}
+
+
+/* Improved active state for collapsed sidebar */
+.sidebar-fixed.collapsed .nav-item .nav-link.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+/* Focus states */
+.sidebar-toggle:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.5);
+  outline-offset: 2px;
+}
+
+/* Clean minimal design - no patterns or overlays needed */
+
+/* Logo Container - Vertical Layout Solution */
+nav.sidebar-fixed .sidebar-logo-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.75rem !important;
+  border-bottom: 1px solid #374151;
+  margin-bottom: 0.5rem;
+  position: relative !important;
+  z-index: 1;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  gap: 0.5rem !important;
+}
+
+nav.sidebar-fixed .sidebar-logo-container .logo-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px;
+  flex-shrink: 0 !important;
+  position: static !important;
+}
+
+nav.sidebar-fixed .sidebar-logo-container .sidebar-toggle {
+  position: static !important;
+  flex-shrink: 0 !important;
+}
+
 
 .logo-sidebar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   filter: brightness(0) invert(1);
-  opacity: 0.95;
-  transition: all var(--transition-base);
-}
-
-.sidebar-logo-container:hover .logo-sidebar {
   opacity: 1;
-  filter: brightness(0) invert(1) drop-shadow(0 0 8px rgba(229, 25, 43, 0.3));
+  transition: all 0.2s ease;
 }
 
 .logo-text {
-  color: var(--white);
-  font-weight: 700;
-  font-size: 1.25rem;
-  letter-spacing: 1px;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
   margin: 0;
 }
 
-/* Navigation Links */
+/* Navigation Links - Modern Minimal Design */
 .sidebar .nav-link {
-  color: var(--neutral-300);
-  padding: 0.625rem 1.25rem;
-  margin: 0.125rem 0.5rem;
-  border-radius: var(--radius-md);
-  transition: all var(--transition-base);
-  border-left: 3px solid transparent;
+  color: #9ca3af;
+  padding: 0.75rem 1rem;
+  margin: 2px 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
   position: relative;
-  font-size: 0.925rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
 }
 
 .sidebar .nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.04);
-  color: var(--white);
-  transform: translateX(2px);
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  text-decoration: none;
 }
 
 .sidebar .nav-link.active {
-  color: var(--white);
-  background-color: rgba(229, 25, 43, 0.08);
-  border-left-color: var(--brand-red);
+  color: #ffffff;
+  background-color: #2563eb;
 }
 
-.sidebar .nav-link.active::after {
-  content: '';
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 4px;
-  background-color: var(--brand-red);
-  border-radius: 50%;
+.sidebar .nav-link:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.5);
+  outline-offset: 2px;
 }
 
 .sidebar .nav-link i {
   margin-right: 0.75rem;
-  font-size: 1.1rem;
-  opacity: 0.9;
+  font-size: 16px;
+  opacity: 1;
+  width: 16px;
+  text-align: center;
 }
 
-/* Logout Link */
+/* Logout Link - Modern Styling */
 .sidebar .nav-link.text-danger {
-  color: #FCA5A5 !important;
-  margin-top: auto;
+  color: #f87171 !important;
+  margin-top: 1rem;
 }
 
 .sidebar .nav-link.text-danger:hover {
-  color: var(--white) !important;
-  background-color: rgba(220, 38, 38, 0.15);
+  color: #ffffff !important;
+  background-color: #dc2626;
 }
 
-/* User Info */
+/* User Info - Clean Modern Design */
 .sidebar .text-white-50 {
-  color: var(--neutral-400) !important;
-  font-size: 0.8rem;
-  padding: 1rem 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin-top: 2rem;
+  color: #6b7280 !important;
+  font-size: 0.75rem;
+  padding: 1rem;
+  border-top: 1px solid #374151;
+  margin-top: auto;
+  font-weight: 400;
 }
 
 /* =================================================================
@@ -1084,24 +1230,180 @@ textarea.form-control {
 /* =================================================================
    RESPONSIVE DESIGN
    ================================================================= */
+
+/* Medium screens - Tablet and small desktop adjustments */
+@media (max-width: 1200px) and (min-width: 769px) {
+  .main-content {
+    /* Ensure minimum width for tables and forms on medium screens */
+    min-width: 600px;
+    /* Keep the calc() approach but with minimum constraints */
+    width: calc(100vw - 220px);
+  }
+  
+  /* Collapsed state for medium screens */
+  .sidebar-fixed.collapsed + .main-content {
+    width: calc(100vw - 60px);
+    min-width: 600px;
+  }
+}
+
+/* Small screens - Mobile */
 @media (max-width: 768px) {
-  .sidebar {
+  .sidebar-fixed {
     position: fixed;
-    top: 0;
+    top: 60px; /* Below mobile header */
     bottom: 0;
     left: -100%;
     z-index: 1000;
-    width: 250px;
+    width: 250px !important;
     transition: left var(--transition-base);
+    height: calc(100vh - 60px); /* Account for mobile header height */
   }
   
-  .sidebar.show {
+  .sidebar-fixed.show {
     left: 0;
+  }
+  
+  .sidebar-fixed.collapsed {
+    width: 250px !important; /* On mobile, always use full width when shown */
+  }
+  
+  /* Mobile Header - Fixed top navigation bar */
+  .mobile-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001; /* Above sidebar */
+    background: linear-gradient(135deg, var(--neutral-850) 0%, var(--neutral-900) 100%);
+    height: 60px;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    border-bottom: 1px solid #374151;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Mobile Menu Button - Hamburger */
+  .mobile-menu-button {
+    width: 44px; /* Touch-friendly size */
+    height: 44px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+  }
+
+  .mobile-menu-button:hover,
+  .mobile-menu-button:active {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(0.98);
+  }
+
+  /* Hamburger Lines */
+  .hamburger-line {
+    width: 20px;
+    height: 2px;
+    background: #ffffff;
+    border-radius: 1px;
+    transition: all 0.3s ease;
+  }
+
+  /* Animate hamburger when sidebar is open */
+  .sidebar-open .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+  }
+
+  .sidebar-open .hamburger-line:nth-child(2) {
+    opacity: 0;
+  }
+
+  .sidebar-open .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+  }
+
+  /* Mobile Logo */
+  .mobile-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+    justify-content: center;
+    margin: 0 1rem;
+  }
+
+  .mobile-logo-img {
+    width: 28px;
+    height: 28px;
+    filter: brightness(0) invert(1);
+  }
+
+  .mobile-logo-text {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* Mobile User Info */
+  .mobile-user-info {
+    display: flex;
+    align-items: center;
+  }
+
+  .mobile-user-name {
+    color: #9ca3af;
+    font-size: 0.8rem;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Mobile Backdrop - Dark overlay when sidebar is open */
+  .mobile-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999; /* Below sidebar but above content */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .mobile-backdrop.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* Main content takes full width on mobile with header space */
+  .main-content {
+    margin-left: 0 !important;
+    width: 100vw !important;
+    min-width: unset !important; /* Remove any minimum width constraints on mobile */
+    padding-top: 80px !important; /* Space for fixed mobile header */
+  }
+  
+  /* Hide desktop toggle button on mobile */
+  .sidebar-toggle {
+    display: none;
   }
   
   main {
     margin-left: 0 !important;
     padding: 1rem;
+    width: 100% !important;
   }
   
   .card {
