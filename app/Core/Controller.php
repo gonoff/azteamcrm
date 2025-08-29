@@ -6,7 +6,7 @@ class Controller
 {
     protected function view($view, $data = [])
     {
-        extract($data);
+        extract($data, EXTR_SKIP);
         
         $viewFile = dirname(__DIR__) . "/Views/{$view}.php";
         
