@@ -32,6 +32,7 @@ return [
     '/orders/{id}/update-status' => 'OrderController@updateStatus',
     '/orders/{id}/update-shipping' => 'OrderController@updateShipping',
     '/orders/{id}/update-discount' => 'OrderController@updateDiscount',
+    '/orders/{id}/toggle-tax' => 'OrderController@toggleTax',
     '/orders/{id}/cancel' => 'OrderController@cancelOrder',
     '/orders/{id}/process-payment' => 'OrderController@processPayment',
     

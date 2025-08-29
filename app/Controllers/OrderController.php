@@ -6,6 +6,7 @@ use App\Core\Controller;
 use App\Models\Order;
 use App\Models\Customer;
 use App\Models\User;
+use Exception;
 
 class OrderController extends Controller
 {
@@ -515,5 +516,103 @@ class OrderController extends Controller
         }
         
         $this->redirect('/orders/' . $id);
+    }
+    
+    public function toggleTax($id)
+    {
+        // Ensure this is always treated as an AJAX request
+        header('Content-Type: application/json');
+        
+        try {
+            $this->requireAuth();
+            $this->verifyCsrf();
+            
+            // Only accept POST requests
+            if (!$this->isPost()) {
+                $this->json(['success' => false, 'message' => 'Invalid request method'], 405);
+                return;
+            }
+            
+            // Find the order
+            $order = new Order();
+            $orderData = $order->find($id);
+            
+            if (!$orderData) {
+                $this->json(['success' => false, 'message' => 'Order not found'], 404);
+                return;
+            }
+            
+            // Get the new tax status from POST data
+            $applyTax = isset($_POST['apply_tax']) && $_POST['apply_tax'] === '1';
+            
+            // Debug logging
+            error_log("Tax toggle request - Order ID: $id, Apply Tax: " . ($applyTax ? 'true' : 'false'));
+            error_log("Current order total: " . $orderData->order_total);
+            
+            // Initialize tax fields if they don't exist (for existing orders created before migration)
+            if (!isset($orderData->apply_ct_tax)) {
+                $orderData->apply_ct_tax = 0;
+            }
+            if (!isset($orderData->tax_amount)) {
+                $orderData->tax_amount = 0.00;
+            }
+            
+            error_log("Tax fields initialized - apply_ct_tax: " . $orderData->apply_ct_tax . ", tax_amount: " . $orderData->tax_amount);
+            
+            // Update tax settings using the fill method (safer than direct attributes manipulation)
+            $updateData = [
+                'apply_ct_tax' => $applyTax ? 1 : 0
+            ];
+            
+            // Recalculate tax amount based on current order total
+            if ($applyTax) {
+                // Calculate 6.35% Connecticut tax on order subtotal
+                $subtotal = floatval($orderData->order_total ?? 0);
+                $taxAmount = round($subtotal * 0.0635, 2);
+                error_log("Tax calculation: $subtotal * 0.0635 = $taxAmount");
+            } else {
+                $taxAmount = 0.00;
+                error_log("Tax disabled, amount set to 0.00");
+            }
+            
+            $updateData['tax_amount'] = $taxAmount;
+            
+            // Use the fill method to properly update the model
+            $orderData->fill($updateData);
+            
+            // Save the changes
+            if ($orderData->update()) {
+                $message = $applyTax 
+                    ? 'Connecticut tax (6.35%) applied successfully. Tax amount: $' . number_format($taxAmount, 2)
+                    : 'Tax removed successfully';
+                    
+                error_log("Tax toggle successful - $message");
+                    
+                $this->json([
+                    'success' => true, 
+                    'message' => $message,
+                    'apply_tax' => $applyTax,
+                    'tax_amount' => $taxAmount,
+                    'new_total' => $orderData->getTotalAmount()
+                ]);
+            } else {
+                error_log("Database update failed for tax toggle");
+                $this->json(['success' => false, 'message' => 'Failed to update tax settings - database operation failed'], 500);
+            }
+            
+        } catch (Exception $e) {
+            $errorMsg = "Tax toggle error - Order ID: $id, Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine();
+            error_log($errorMsg);
+            
+            // Provide more specific error messages based on the exception
+            $userMessage = 'An error occurred while updating tax settings';
+            if (strpos($e->getMessage(), 'Unknown column') !== false) {
+                $userMessage = 'Database schema error: Missing tax-related fields. Please run the database migration script.';
+            } elseif (strpos($e->getMessage(), 'CSRF token') !== false) {
+                $userMessage = 'Security token expired. Please refresh the page and try again.';
+            }
+            
+            $this->json(['success' => false, 'message' => $userMessage], 500);
+        }
     }
 }

@@ -22,6 +22,11 @@ class Customer extends Model
     
     public function getFullAddress()
     {
+        // Check if primary address information is available
+        if (empty($this->address_line_1) || empty($this->city) || empty($this->state) || empty($this->zip_code)) {
+            return 'Address not provided';
+        }
+        
         $address = $this->address_line_1;
         if ($this->address_line_2) {
             $address .= ', ' . $this->address_line_2;

@@ -51,29 +51,30 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <label for="company_name" class="form-label">Company Name</label>
+                                <label for="company_name" class="form-label">Company Name <span class="text-danger">*</span></label>
                                 <input type="text" 
                                        class="form-control" 
                                        id="company_name" 
                                        name="company_name" 
-                                       value="<?= htmlspecialchars($_SESSION['old']['company_name'] ?? $customer->company_name ?? '') ?>">
-                                <small class="text-muted">Optional</small>
+                                       value="<?= htmlspecialchars($_SESSION['old']['company_name'] ?? $customer->company_name ?? '') ?>"
+                                       required
+                                       minlength="2">
+                                <div class="invalid-feedback">
+                                    Please provide a company name (minimum 2 characters).
+                                </div>
                             </div>
                         </div>
 
                         <!-- Address Line 1 & 2 -->
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="address_line_1" class="form-label">Address Line 1 <span class="text-danger">*</span></label>
+                                <label for="address_line_1" class="form-label">Address Line 1</label>
                                 <input type="text" 
                                        class="form-control" 
                                        id="address_line_1" 
                                        name="address_line_1" 
-                                       value="<?= htmlspecialchars($_SESSION['old']['address_line_1'] ?? $customer->address_line_1 ?? '') ?>" 
-                                       required>
-                                <div class="invalid-feedback">
-                                    Please provide an address.
-                                </div>
+                                       value="<?= htmlspecialchars($_SESSION['old']['address_line_1'] ?? $customer->address_line_1 ?? '') ?>">
+                                <small class="text-muted">Optional</small>
                             </div>
                             
                             <div class="col-md-6">
@@ -90,21 +91,18 @@
                         <!-- City, State, Zip -->
                         <div class="row mb-3">
                             <div class="col-md-5">
-                                <label for="city" class="form-label">City <span class="text-danger">*</span></label>
+                                <label for="city" class="form-label">City</label>
                                 <input type="text" 
                                        class="form-control" 
                                        id="city" 
                                        name="city" 
-                                       value="<?= htmlspecialchars($_SESSION['old']['city'] ?? $customer->city ?? '') ?>" 
-                                       required>
-                                <div class="invalid-feedback">
-                                    Please provide a city.
-                                </div>
+                                       value="<?= htmlspecialchars($_SESSION['old']['city'] ?? $customer->city ?? '') ?>">
+                                <small class="text-muted">Optional</small>
                             </div>
                             
                             <div class="col-md-3">
-                                <label for="state" class="form-label">State <span class="text-danger">*</span></label>
-                                <select class="form-select" id="state" name="state" required>
+                                <label for="state" class="form-label">State</label>
+                                <select class="form-select" id="state" name="state">
                                     <option value="">Choose...</option>
                                     <?php
                                     $states = [
@@ -130,38 +128,37 @@
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <div class="invalid-feedback">
-                                    Please select a state.
-                                </div>
+                                <small class="text-muted">Optional</small>
                             </div>
                             
                             <div class="col-md-4">
-                                <label for="zip_code" class="form-label">Zip Code <span class="text-danger">*</span></label>
+                                <label for="zip_code" class="form-label">Zip Code</label>
                                 <input type="text" 
                                        class="form-control" 
                                        id="zip_code" 
                                        name="zip_code" 
                                        value="<?= htmlspecialchars($_SESSION['old']['zip_code'] ?? $customer->zip_code ?? '') ?>" 
                                        pattern="[0-9]{5}(-[0-9]{4})?" 
-                                       placeholder="12345 or 12345-6789"
-                                       required>
-                                <div class="invalid-feedback">
-                                    Please provide a valid zip code.
-                                </div>
+                                       placeholder="12345 or 12345-6789">
+                                <small class="text-muted">Optional</small>
                             </div>
                         </div>
 
                         <!-- Phone and Email -->
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="phone_number" class="form-label">Phone Number</label>
+                                <label for="phone_number" class="form-label">Phone Number <span class="text-danger">*</span></label>
                                 <input type="tel" 
                                        class="form-control" 
                                        id="phone_number" 
                                        name="phone_number" 
                                        value="<?= htmlspecialchars($_SESSION['old']['phone_number'] ?? $customer->phone_number ?? '') ?>" 
-                                       placeholder="(555) 123-4567">
-                                <small class="text-muted">Optional</small>
+                                       placeholder="(555) 123-4567"
+                                       required
+                                       minlength="10">
+                                <div class="invalid-feedback">
+                                    Please provide a valid phone number (minimum 10 digits).
+                                </div>
                             </div>
                             
                             <div class="col-md-6">

@@ -142,7 +142,15 @@ class Controller
         if (is_array($input)) {
             return array_map([$this, 'sanitize'], $input);
         }
-        return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
+        
+        // Only trim and clean data for processing - don't HTML encode here
+        // HTML encoding should only happen at output time in views
+        $cleaned = trim($input);
+        
+        // Remove null bytes and control characters for security
+        $cleaned = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $cleaned);
+        
+        return $cleaned;
     }
     
     protected function toTitleCase($string)

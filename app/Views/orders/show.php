@@ -222,6 +222,11 @@
                     <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#discountModal">
                         <i class="bi bi-tag"></i> Discount
                     </button>
+                    <button type="button" class="btn btn-sm <?= $order->apply_ct_tax ? 'btn-success' : 'btn-outline-secondary' ?>" 
+                            id="taxToggleBtn" 
+                            title="<?= $order->apply_ct_tax ? 'Tax Applied (6.35%)' : 'Click to Apply CT Tax' ?>">
+                        <i class="bi bi-percent"></i> Tax
+                    </button>
                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createOrderItemModal">
                         <i class="bi bi-plus"></i> Add Item
                     </button>
@@ -1052,10 +1057,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Simple Bootstrap dropdown configuration for better positioning
+    // Simple Bootstrap dropdown configuration for optimal positioning
     document.querySelectorAll('.dropdown').forEach(dropdown => {
+        // Configure Bootstrap dropdowns for better boundary detection
         dropdown.setAttribute('data-bs-boundary', 'viewport');
-        dropdown.setAttribute('data-bs-flip', 'true');
+        dropdown.setAttribute('data-bs-placement', 'bottom-start');
+        
+        // Enable Bootstrap's auto-flip feature for screen edges
+        const toggle = dropdown.querySelector('.dropdown-toggle');
+        if (toggle) {
+            toggle.setAttribute('data-bs-auto-close', 'true');
+        }
     });
     
     // Edit Order Item Modal functionality
@@ -1522,6 +1534,97 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Handle tax toggle button
+    const taxToggleBtn = document.getElementById('taxToggleBtn');
+    if (taxToggleBtn) {
+        taxToggleBtn.addEventListener('click', function() {
+            const isCurrentlyEnabled = this.classList.contains('btn-success');
+            const newStatus = !isCurrentlyEnabled;
+            
+            // Update button appearance immediately
+            if (newStatus) {
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-success');
+                this.title = 'Tax Applied (6.35%)';
+            } else {
+                this.classList.remove('btn-success');
+                this.classList.add('btn-outline-secondary');
+                this.title = 'Click to Apply CT Tax';
+            }
+            
+            // Disable button to prevent double clicks
+            this.disabled = true;
+            const originalHTML = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Updating...';
+            
+            // Send AJAX request to toggle tax
+            fetch('/azteamcrm/orders/<?= $order->order_id ?>/toggle-tax', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: 'csrf_token=<?= $csrf_token ?>&apply_tax=' + (newStatus ? '1' : '0')
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message briefly
+                    const successMsg = document.createElement('div');
+                    successMsg.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                    successMsg.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 300px;';
+                    successMsg.innerHTML = `
+                        <i class="bi bi-check-circle"></i> ${data.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.body.appendChild(successMsg);
+                    
+                    // Reload page after 1 second to update totals
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    // Revert button state on failure
+                    if (!newStatus) {
+                        this.classList.remove('btn-outline-secondary');
+                        this.classList.add('btn-success');
+                        this.title = 'Tax Applied (6.35%)';
+                    } else {
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-outline-secondary');
+                        this.title = 'Click to Apply CT Tax';
+                    }
+                    
+                    alert('Failed to update tax: ' + (data.message || 'Unknown error'));
+                }
+                
+                // Re-enable button
+                this.disabled = false;
+                this.innerHTML = originalHTML;
+            })
+            .catch(error => {
+                console.error('Error updating tax:', error);
+                
+                // Revert button state on error
+                if (!newStatus) {
+                    this.classList.remove('btn-outline-secondary');
+                    this.classList.add('btn-success');
+                    this.title = 'Tax Applied (6.35%)';
+                } else {
+                    this.classList.remove('btn-success');
+                    this.classList.add('btn-outline-secondary');
+                    this.title = 'Click to Apply CT Tax';
+                }
+                
+                alert('Failed to update tax: ' + error.message);
+                
+                // Re-enable button
+                this.disabled = false;
+                this.innerHTML = originalHTML;
+            });
+        });
+    }
 });
 </script>
 

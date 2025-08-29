@@ -331,6 +331,12 @@ main {
   padding: 1.5rem;
 }
 
+/* Allow dropdown content to extend beyond card body */
+.card-body:has(.dropdown-menu),
+.card-body:has(.order-items-table) {
+  overflow: visible !important;
+}
+
 .card-footer {
   background-color: var(--neutral-50);
   border-top: 1px solid var(--neutral-200);
@@ -870,6 +876,17 @@ textarea.form-control {
   border-color: var(--neutral-200);
 }
 
+/* Bootstrap Dropdown Z-Index Fixes - Let Bootstrap handle positioning naturally */
+.dropdown-menu.show {
+  z-index: 9999 !important;
+  /* Remove position override - let Bootstrap's Popper.js handle it */
+}
+
+/* Ensure all dropdowns appear above other elements */
+.dropdown-menu {
+  z-index: 9999 !important;
+}
+
 /* =================================================================
    PROGRESS BARS - Visual Feedback
    ================================================================= */
@@ -963,11 +980,25 @@ textarea.form-control {
   font-weight: 700;
 }
 
+/* Fix Card Overflow for Dropdown Clipping - Consolidated Rules */
+.card:has(.dropdown-menu),
+.card:has(.order-items-table),
+.card:has(.order-items-container) {
+  overflow: visible !important; /* Allow dropdowns to extend beyond card boundaries */
+}
+
+/* Fallback for browsers that don't support :has() selector */
+.card.dropdown-container,
+.order-items-container .card {
+  overflow: visible !important;
+}
+
 /* Order Items Table */
 .order-items-container {
   overflow: visible !important;
   width: 100%;
   position: relative;
+  z-index: 1; /* Ensure container doesn't interfere with dropdown stacking */
 }
 
 .order-items-table {
@@ -975,8 +1006,13 @@ textarea.form-control {
   margin-bottom: 0;
 }
 
+/* Fix dropdown container stacking context */
+.order-items-table .dropdown {
+  position: static !important; /* Prevent dropdown container from creating stacking context */
+}
+
 .order-items-table .dropdown-menu {
-  position: absolute !important;
+  /* Let Bootstrap handle positioning naturally */
   z-index: 9999 !important;
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--neutral-200);
@@ -1084,10 +1120,19 @@ textarea.form-control {
     overflow-x: auto !important;
     overflow-y: visible !important;
     -webkit-overflow-scrolling: touch;
+    /* Prevent dropdown clipping on mobile */
+    position: relative;
+    z-index: 10;
   }
   
   .order-items-table {
     min-width: 800px;
+  }
+  
+  /* Ensure dropdowns work on mobile */
+  .order-items-table .dropdown-menu {
+    z-index: 9999 !important;
+    /* Let Bootstrap handle positioning on mobile too */
   }
 }
 

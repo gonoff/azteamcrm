@@ -92,16 +92,24 @@ class CustomerController extends Controller
         }
         $data['city'] = $this->toTitleCase($data['city']);
         
-        // Keep state uppercase (standard for US state codes)
-        $data['state'] = strtoupper($data['state']);
+        // Keep state uppercase (standard for US state codes) or set to NULL if empty
+        if (!empty($data['state'])) {
+            $data['state'] = strtoupper($data['state']);
+        } else {
+            $data['state'] = null; // Database requires exactly 2 chars or NULL
+        }
+        
+        // Format phone number BEFORE validation
+        if (!empty($data['phone_number'])) {
+            $data['phone_number'] = preg_replace('/[^0-9]/', '', $data['phone_number']);
+        }
         
         // Validation
         $validationRules = [
             'full_name' => 'required|min:2',
-            'address_line_1' => 'required',
-            'city' => 'required',
-            'state' => 'required|max:2',
-            'zip_code' => 'required'
+            'company_name' => 'required|min:2',
+            'phone_number' => 'required|min:10',
+            'state' => 'max:2'  // Only validate max length if state is provided
         ];
         
         if (!empty($data['email'])) {
@@ -152,20 +160,26 @@ class CustomerController extends Controller
             return;
         }
         
-        // Format phone number
-        if (!empty($data['phone_number'])) {
-            $data['phone_number'] = preg_replace('/[^0-9]/', '', $data['phone_number']);
-        }
-        
-        // Use error handling wrapper for database operation
+        // Create customer with detailed error handling (temporary for debugging)
         $customer = new Customer();
-        $newCustomer = $this->handleDatabaseOperation(
-            function() use ($customer, $data) {
-                return $customer->create($data);
-            },
-            'Customer created successfully.',
-            'Failed to create customer. Please check your information and try again.'
-        );
+        try {
+            $newCustomer = $customer->create($data);
+            
+            if ($newCustomer) {
+                $_SESSION['success'] = 'Customer created successfully.';
+            } else {
+                // Show more details about why create() returned false
+                $_SESSION['error'] = 'Database operation failed. The create method returned false. Check data format and database constraints.';
+                error_log("Customer creation failed - create() returned false. Data: " . print_r($data, true));
+                $newCustomer = false;
+            }
+        } catch (\Exception $e) {
+            // Show actual database error (temporary for debugging)
+            $_SESSION['error'] = 'Database Error: ' . $e->getMessage() . ' (File: ' . basename($e->getFile()) . ':' . $e->getLine() . ')';
+            error_log("Customer creation exception: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+            error_log("Data that caused error: " . print_r($data, true));
+            $newCustomer = false;
+        }
         
         if ($newCustomer) {
             // Check if there's a return URL
@@ -266,16 +280,24 @@ class CustomerController extends Controller
         }
         $data['city'] = $this->toTitleCase($data['city']);
         
-        // Keep state uppercase (standard for US state codes)
-        $data['state'] = strtoupper($data['state']);
+        // Keep state uppercase (standard for US state codes) or set to NULL if empty
+        if (!empty($data['state'])) {
+            $data['state'] = strtoupper($data['state']);
+        } else {
+            $data['state'] = null; // Database requires exactly 2 chars or NULL
+        }
+        
+        // Format phone number
+        if (!empty($data['phone_number'])) {
+            $data['phone_number'] = preg_replace('/[^0-9]/', '', $data['phone_number']);
+        }
         
         // Validation
         $errors = $this->validate($data, [
             'full_name' => 'required|min:2',
-            'address_line_1' => 'required',
-            'city' => 'required',
-            'state' => 'required|max:2',
-            'zip_code' => 'required'
+            'company_name' => 'required|min:2',
+            'phone_number' => 'required|min:10',
+            'state' => 'max:2'  // Only validate max length if state is provided
         ]);
         
         // Validate email if provided
