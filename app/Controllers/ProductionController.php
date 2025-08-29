@@ -23,7 +23,7 @@ class ProductionController extends Controller
         $perPage = 50; // Show more items on production dashboard
         $search = trim($_GET['search'] ?? '');
         
-        // Get paginated production items
+        // Get paginated production items using efficient SQL pagination
         if (!empty($search)) {
             $result = $orderItem->searchAndPaginate(
                 $search,
@@ -33,69 +33,15 @@ class ProductionController extends Controller
                 ['order_item_status' => ['pending', 'in_production']], // Active items only
                 'date_due ASC'
             );
-            $productionItems = $result['data'];
         } else {
-            // Get all active production items using model method
-            $productionItems = $orderItem->getProductionItems();
-            
-            // Convert to paginated format for consistency
-            $totalItems = count($productionItems);
-            $totalPages = ceil($totalItems / $perPage);
-            $start = ($page - 1) * $perPage;
-            $paginatedItems = array_slice($productionItems, $start, $perPage);
-            
-            $result = [
-                'data' => $paginatedItems,
-                'pagination' => [
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'total_items' => $totalItems,
-                    'total_pages' => $totalPages,
-                    'has_previous' => $page > 1,
-                    'has_next' => $page < $totalPages,
-                    'previous_page' => $page > 1 ? $page - 1 : null,
-                    'next_page' => $page < $totalPages ? $page + 1 : null,
-                    'start_item' => $totalItems > 0 ? $start + 1 : 0,
-                    'end_item' => min($start + $perPage, $totalItems)
-                ]
-            ];
-            $productionItems = $paginatedItems;
+            // Use efficient SQL-based pagination instead of loading all items into memory
+            $result = $orderItem->getProductionItemsPaginated($page, $perPage, 'date_due ASC');
         }
         
-        // Calculate statistics from the retrieved items
-        $stats = [
-            'total_pending' => 0,
-            'in_production' => 0,
-            'completed_today' => 0,
-            'rush_items' => 0,
-            'overdue_items' => 0,
-            'awaiting_supplier' => 0
-        ];
+        $productionItems = $result['data'];
         
-        // Calculate stats from production items
-        foreach ($productionItems as $item) {
-            // Update statistics
-            if ($item->order_item_status === 'pending') {
-                $stats['total_pending']++;
-            } elseif ($item->order_item_status === 'in_production') {
-                $stats['in_production']++;
-            }
-            
-            if ($item->urgency_level === 'rush' || $item->urgency_level === 'due_soon') {
-                $stats['rush_items']++;
-            }
-            
-            if ($item->urgency_level === 'overdue') {
-                $stats['overdue_items']++;
-            }
-            
-            if ($item->supplier_status === 'awaiting_order' || $item->supplier_status === 'order_made') {
-                $stats['awaiting_supplier']++;
-            }
-        }
-        
-        // Get items completed today using model method
-        $stats['completed_today'] = $orderItem->getCompletedTodayCount();
+        // Get accurate statistics from complete dataset (not just paginated results)
+        $stats = $orderItem->getProductionStatistics();
         
         // Filter items due today
         $itemsDueToday = array_filter($productionItems, function($item) {
@@ -150,9 +96,13 @@ class ProductionController extends Controller
         // Get materials summary using model method
         $materials = $orderItem->getMaterialsSummary();
         
+        // Create OrderItem instance to use its methods for consistent labeling
+        $orderItemInstance = new OrderItem();
+        
         $this->view('production/materials', [
             'title' => 'Materials Report',
             'materials' => $materials,
+            'orderItemHelper' => $orderItemInstance,
             'csrf_token' => $this->csrf()
         ]);
     }

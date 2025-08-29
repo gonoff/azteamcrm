@@ -30,27 +30,12 @@
     $startToday = [];
     
     foreach ($todayItems as $item) {
-        if (isset($item->priority)) {
-            if ($item->priority === 'due_today') {
-                $dueToday[] = $item;
-            } elseif ($item->priority === 'due_tomorrow') {
-                $dueTomorrow[] = $item;
-            } else {
-                $startToday[] = $item;
-            }
+        if ($item->priority === 'due_today') {
+            $dueToday[] = $item;
+        } elseif ($item->priority === 'due_tomorrow') {
+            $dueTomorrow[] = $item;
         } else {
-            // Fallback if priority not set
-            $dateDue = strtotime($item->date_due);
-            $today = strtotime('today');
-            $tomorrow = strtotime('tomorrow');
-            
-            if ($dateDue == $today) {
-                $dueToday[] = $item;
-            } elseif ($dateDue == $tomorrow) {
-                $dueTomorrow[] = $item;
-            } else {
-                $startToday[] = $item;
-            }
+            $startToday[] = $item;
         }
     }
     ?>
@@ -239,13 +224,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     button.classList.add('btn-success');
                 }
             } else {
-                alert('Failed to update status: ' + (data.message || 'Unknown error'));
+                showAlert('danger', 'Failed to update status: ' + (data.message || 'Unknown error'));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while updating status');
+            showAlert('danger', 'Network error: Unable to update status. Please check your connection and try again.');
         });
+    }
+    
+    function showAlert(type, message) {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        // Remove existing alerts
+        document.querySelectorAll('.alert').forEach(alert => {
+            if (!alert.id) alert.remove();
+        });
+        
+        // Add new alert
+        document.querySelector('h1').insertAdjacentHTML('afterend', alertHtml);
     }
 });
 </script>

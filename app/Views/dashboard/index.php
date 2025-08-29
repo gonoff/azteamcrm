@@ -17,6 +17,7 @@
             <div class="card-body">
                 <h5 class="card-title text-muted">Pending Orders</h5>
                 <h2 class="card-text text-warning"><?= number_format($stats['pending_orders']) ?></h2>
+                <small class="text-muted">Production Status</small>
             </div>
         </div>
     </div>
@@ -31,8 +32,9 @@
     <div class="col-md-3 mb-3">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title text-muted">Outstanding Balance</h5>
-                <h2 class="card-text">$<?= number_format($stats['outstanding_balance'], 2) ?></h2>
+                <h5 class="card-title text-muted">Unpaid Orders</h5>
+                <h2 class="card-text text-danger"><?= number_format($stats['unpaid_orders']) ?></h2>
+                <small class="text-muted">Payment Status</small>
             </div>
         </div>
     </div>
@@ -42,8 +44,9 @@
     <div class="col-md-3 mb-3">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title text-muted">Total Revenue</h5>
-                <h2 class="card-text text-success">$<?= number_format($stats['total_revenue'], 2) ?></h2>
+                <h5 class="card-title text-muted">Outstanding Balance</h5>
+                <h2 class="card-text text-warning">$<?= number_format($stats['outstanding_balance'], 2) ?></h2>
+                <small class="text-muted">Actual Amount Owed</small>
             </div>
         </div>
     </div>
@@ -66,8 +69,22 @@
     <div class="col-md-3 mb-3">
         <div class="card">
             <div class="card-body">
+                <h5 class="card-title text-muted">Total Revenue</h5>
+                <h2 class="card-text text-success">$<?= number_format($stats['total_revenue'], 2) ?></h2>
+                <small class="text-muted">Includes Tax & Shipping</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Row for Production Metrics -->
+<div class="row mt-4">
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <div class="card-body">
                 <h5 class="card-title text-muted">In Production</h5>
                 <h2 class="card-text text-info"><?= number_format($stats['items_in_production']) ?></h2>
+                <small class="text-muted">Items Being Worked On</small>
             </div>
         </div>
     </div>

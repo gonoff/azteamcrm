@@ -36,12 +36,7 @@
                     </thead>
                     <tbody>
                         <?php foreach ($pendingItems as $item): ?>
-                        <?php 
-                        $isOverdue = strtotime($item->date_due) < strtotime('today');
-                        $isDueSoon = strtotime($item->date_due) <= strtotime('+3 days');
-                        $rowClass = $isOverdue ? 'table-danger' : ($isDueSoon ? 'table-warning' : '');
-                        ?>
-                        <tr class="<?= $rowClass ?>">
+                        <tr class="<?= $item->getRowClass() ?>">
                             <td>
                                 <a href="/azteamcrm/orders/<?= $item->order_id ?>" target="_blank">
                                     #<?= $item->order_id ?>
@@ -64,11 +59,7 @@
                             <td><?= $item->getCustomMethodLabel() ?></td>
                             <td>
                                 <?= date('M d, Y', strtotime($item->date_due)) ?>
-                                <?php if ($isOverdue): ?>
-                                    <span class="badge badge-danger">OVERDUE</span>
-                                <?php elseif ($isDueSoon): ?>
-                                    <span class="badge badge-warning">DUE SOON</span>
-                                <?php endif; ?>
+                                <?= $item->getUrgencyBadge() ?>
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-primary start-production" 
@@ -110,18 +101,50 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Check if table is now empty
                     if (document.querySelector('tbody').children.length === 0) {
-                        location.reload();
+                        // Show success message instead of reload
+                        const tableCard = document.querySelector('.card');
+                        tableCard.innerHTML = `
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i> No pending items! All items are either in production or completed.
+                            </div>
+                        `;
+                        // Update page info
+                        const infoAlert = document.querySelector('.alert-info');
+                        if (infoAlert) {
+                            infoAlert.classList.remove('alert-info');
+                            infoAlert.classList.add('alert-success');
+                            infoAlert.innerHTML = '<i class="bi bi-check-circle"></i> All pending items have been moved to production!';
+                        }
                     }
                 } else {
-                    alert('Failed to update status: ' + (data.message || 'Unknown error'));
+                    showAlert('danger', 'Failed to update status: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred while updating status');
+                showAlert('danger', 'Network error: Unable to update status. Please check your connection and try again.');
             });
         });
     });
+    
+    function showAlert(type, message) {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        // Remove existing alerts
+        document.querySelectorAll('.alert').forEach(alert => {
+            if (!alert.id && !alert.classList.contains('alert-info') && !alert.classList.contains('alert-success')) {
+                alert.remove();
+            }
+        });
+        
+        // Add new alert
+        document.querySelector('h1').insertAdjacentHTML('afterend', alertHtml);
+    }
 });
 </script>
 

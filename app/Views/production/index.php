@@ -155,7 +155,19 @@
 
 <!-- Search Bar -->
 <div class="mb-3">
-    <input type="text" id="searchInput" class="form-control" placeholder="Search by order #, customer, product...">
+    <form method="GET" action="/azteamcrm/production" class="d-flex">
+        <input type="text" name="search" class="form-control me-2" 
+               placeholder="Search by product type, description, or notes..." 
+               value="<?= htmlspecialchars($search_term) ?>">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-search"></i> Search
+        </button>
+        <?php if (!empty($search_term)): ?>
+        <a href="/azteamcrm/production" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-x"></i> Clear
+        </a>
+        <?php endif; ?>
+    </form>
 </div>
 
 <!-- Production Items Table -->
@@ -316,26 +328,25 @@ document.addEventListener('DOMContentLoaded', function() {
             
             rows.forEach(row => {
                 if (filter === 'all') {
-                    row.style.display = '';
+                    row.classList.remove('d-none');
                 } else if (filter === 'pending' || filter === 'in_production') {
-                    row.style.display = row.dataset.status === filter ? '' : 'none';
+                    if (row.dataset.status === filter) {
+                        row.classList.remove('d-none');
+                    } else {
+                        row.classList.add('d-none');
+                    }
                 } else {
-                    row.style.display = row.dataset.urgency === filter ? '' : 'none';
+                    if (row.dataset.urgency === filter) {
+                        row.classList.remove('d-none');
+                    } else {
+                        row.classList.add('d-none');
+                    }
                 }
             });
         });
     });
     
-    // Search functionality
-    const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        rows.forEach(row => {
-            const searchData = row.dataset.search;
-            row.style.display = searchData.includes(searchTerm) ? '' : 'none';
-        });
-    });
+    // Note: Search functionality now handled server-side via GET form
     
     // Checkbox selection
     const selectAll = document.getElementById('selectAll');
@@ -345,7 +356,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     selectAll.addEventListener('change', function() {
         checkboxes.forEach(cb => {
-            if (cb.closest('tr').style.display !== 'none') {
+            if (!cb.closest('tr').classList.contains('d-none')) {
                 cb.checked = this.checked;
             }
         });
@@ -373,6 +384,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const itemId = this.dataset.id;
             const status = this.dataset.status;
             
+            // Validate required data
+            if (!itemId || !status) {
+                showAlert('danger', 'Invalid item or status data. Please refresh the page and try again.');
+                return;
+            }
+            
             fetch(`/azteamcrm/order-items/${itemId}/update-status`, {
                 method: 'POST',
                 headers: {
@@ -380,12 +397,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: `csrf_token=<?= $csrf_token ?>&status_type=order_item_status&status=${status}`
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     // Update the badge
                     const badge = document.querySelector(`.status-badge[data-item-id="${itemId}"]`);
-                    if (badge && data.badge) {
+                    if (!badge) {
+                        showAlert('warning', 'Status updated but display may be inconsistent. Please refresh if needed.');
+                        return;
+                    }
+                    
+                    if (data.badge) {
                         badge.innerHTML = data.badge;
                     }
                     
@@ -398,9 +425,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Show success message
                     showAlert('success', 'Status updated successfully');
                     
-                    // Reload if item is completed
+                    // If item is completed, remove from active view
                     if (status === 'completed') {
-                        setTimeout(() => location.reload(), 1000);
+                        const row = badge.closest('tr');
+                        if (row) {
+                            row.remove();
+                            
+                            // Update item count in info display
+                            const tbody = document.querySelector('#productionTable tbody');
+                            if (tbody && tbody.children.length === 0) {
+                                const tableContainer = document.querySelector('.table-responsive');
+                                tableContainer.innerHTML = `
+                                    <div class="alert alert-success">
+                                        <i class="bi bi-check-circle"></i> All items completed! Great work.
+                                    </div>
+                                `;
+                            }
+                        }
                     }
                 } else {
                     showAlert('danger', data.message || 'Failed to update status');
@@ -408,7 +449,11 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
-                showAlert('danger', 'An error occurred while updating status');
+                let errorMessage = 'Network error: Unable to update status.';
+                if (error.message.includes('HTTP error')) {
+                    errorMessage = `Server error: ${error.message}. Please try again or contact support.`;
+                }
+                showAlert('danger', errorMessage);
             });
         });
     });
@@ -455,7 +500,14 @@ function bulkUpdateStatus(status) {
         .map(cb => cb.value);
     
     if (selectedIds.length === 0) {
-        showAlert('warning', 'No items selected');
+        showAlert('warning', 'No items selected. Please select items to update.');
+        return;
+    }
+    
+    // Validate status parameter
+    const validStatuses = ['pending', 'in_production', 'completed'];
+    if (!status || !validStatuses.includes(status)) {
+        showAlert('danger', 'Invalid status selected. Please try again.');
         return;
     }
     
@@ -476,18 +528,62 @@ function bulkUpdateStatus(status) {
         },
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             showAlert('success', data.message);
-            setTimeout(() => location.reload(), 1000);
+            
+            // Update UI for each selected item
+            selectedIds.forEach(id => {
+                const checkbox = document.querySelector(`.item-checkbox[value="${id}"]`);
+                if (checkbox) {
+                    const row = checkbox.closest('tr');
+                    if (status === 'completed') {
+                        // Remove completed items from view
+                        row.remove();
+                    } else {
+                        // Update status badge and row data
+                        row.dataset.status = status;
+                        const statusBadge = row.querySelector('.status-badge');
+                        if (statusBadge) {
+                            // Update badge appearance based on new status
+                            const badgeClass = status === 'in_production' ? 'badge-info' : 'badge-warning';
+                            const badgeText = status.replace('_', ' ').toUpperCase();
+                            statusBadge.innerHTML = `<span class="badge ${badgeClass}">${badgeText}</span>`;
+                        }
+                    }
+                }
+            });
+            
+            // Clear selection
+            clearSelection();
+            
+            // Check if table is empty
+            const tbody = document.querySelector('#productionTable tbody');
+            if (tbody && tbody.children.length === 0) {
+                const tableContainer = document.querySelector('.table-responsive');
+                tableContainer.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i> All items completed! Great work.
+                    </div>
+                `;
+            }
         } else {
             showAlert('danger', data.message || 'Failed to update items');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showAlert('danger', 'An error occurred while updating items');
+        let errorMessage = 'Network error: Unable to update items.';
+        if (error.message.includes('HTTP error')) {
+            errorMessage = `Server error: ${error.message}. Please try again or contact support.`;
+        }
+        showAlert('danger', errorMessage);
     });
 }
 
@@ -496,7 +592,14 @@ function bulkUpdateSupplierStatus(status) {
         .map(cb => cb.value);
     
     if (selectedIds.length === 0) {
-        showAlert('warning', 'No items selected');
+        showAlert('warning', 'No items selected. Please select items to update.');
+        return;
+    }
+    
+    // Validate supplier status parameter
+    const validSupplierStatuses = ['awaiting_order', 'order_made', 'order_arrived', 'order_delivered'];
+    if (!status || !validSupplierStatuses.includes(status)) {
+        showAlert('danger', 'Invalid supplier status selected. Please try again.');
         return;
     }
     
@@ -517,18 +620,46 @@ function bulkUpdateSupplierStatus(status) {
         },
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             showAlert('success', data.message);
-            setTimeout(() => location.reload(), 1000);
+            
+            // Update supplier status badges for each selected item
+            selectedIds.forEach(id => {
+                const checkbox = document.querySelector(`.item-checkbox[value="${id}"]`);
+                if (checkbox) {
+                    const row = checkbox.closest('tr');
+                    const supplierBadge = row.querySelector('.supplier-badge');
+                    if (supplierBadge) {
+                        // Update supplier badge appearance based on new status
+                        const badgeClass = status === 'order_delivered' ? 'badge-success' : 
+                                         status === 'order_arrived' ? 'badge-info' : 
+                                         status === 'order_made' ? 'badge-warning' : 'badge-secondary';
+                        const badgeText = status.replace(/_/g, ' ').toUpperCase();
+                        supplierBadge.innerHTML = `<span class="badge ${badgeClass}">${badgeText}</span>`;
+                    }
+                }
+            });
+            
+            // Clear selection
+            clearSelection();
         } else {
             showAlert('danger', data.message || 'Failed to update supplier status');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showAlert('danger', 'An error occurred while updating supplier status');
+        let errorMessage = 'Network error: Unable to update supplier status.';
+        if (error.message.includes('HTTP error')) {
+            errorMessage = `Server error: ${error.message}. Please try again or contact support.`;
+        }
+        showAlert('danger', errorMessage);
     });
 }
 
@@ -540,20 +671,53 @@ function clearSelection() {
 }
 
 function showAlert(type, message) {
+    // Validate input
+    if (!type || !message) {
+        console.error('showAlert called with invalid parameters:', { type, message });
+        return;
+    }
+    
     const alertHtml = `
         <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            ${message}
+            <i class="bi ${getAlertIcon(type)}"></i> ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;
     
-    // Remove existing alerts
+    // Remove existing temporary alerts (keep permanent ones)
     document.querySelectorAll('.alert').forEach(alert => {
-        if (!alert.id) alert.remove();
+        if (!alert.id && !alert.classList.contains('alert-info')) {
+            alert.remove();
+        }
     });
     
     // Add new alert
-    document.querySelector('h1').insertAdjacentHTML('afterend', alertHtml);
+    const headerElement = document.querySelector('h1');
+    if (headerElement) {
+        headerElement.insertAdjacentHTML('afterend', alertHtml);
+        
+        // Auto-dismiss success messages after 5 seconds
+        if (type === 'success') {
+            setTimeout(() => {
+                const successAlert = document.querySelector('.alert-success');
+                if (successAlert) {
+                    successAlert.remove();
+                }
+            }, 5000);
+        }
+    } else {
+        console.error('Could not find header element to insert alert');
+    }
+}
+
+function getAlertIcon(type) {
+    const icons = {
+        'success': 'bi-check-circle',
+        'danger': 'bi-exclamation-triangle',
+        'warning': 'bi-exclamation-circle',
+        'info': 'bi-info-circle'
+    };
+    return icons[type] || 'bi-info-circle';
 }
 </script>
 

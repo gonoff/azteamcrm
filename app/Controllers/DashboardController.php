@@ -17,20 +17,21 @@ class DashboardController extends Controller
         $order = new Order();
         $orderItem = new OrderItem();
         
-        // Get statistics
+        // Get statistics with corrected logic
         $stats = [
-            'total_orders' => $order->count(),
-            'pending_orders' => $order->count(['payment_status' => 'unpaid']),
-            'rush_orders' => 0, // Will be calculated based on date_due
-            'total_revenue' => $order->getTotalRevenue(),
-            'outstanding_balance' => $order->getTotalOutstanding(),
+            'total_orders' => $order->count() - $order->count(['order_status' => 'cancelled']),
+            'pending_orders' => $order->countPendingOrders(), // Production status, not payment status
+            'unpaid_orders' => $order->countUnpaidOrders(), // Payment status
+            'rush_orders' => $order->countRushOrders(), // Efficient SQL-based calculation
+            'total_revenue' => $order->getTotalRevenue(), // Now includes tax, shipping, minus discounts
+            'outstanding_balance' => $order->getTotalOutstanding(), // Now calculates actual remaining balance
             'orders_due_today' => $order->countDueToday(),
             'orders_overdue' => $order->countOverdue(),
-            'items_in_production' => $orderItem->countInProduction()
+            'items_in_production' => $orderItem->countInProduction() // Now only counts items actually in production
         ];
         
-        // Get recent orders
-        $recentOrders = $order->findAll([], 'date_created DESC', 10);
+        // Get recent orders (excluding cancelled)
+        $recentOrders = $order->getRecentActiveOrders(10);
         
         // Load customer data for recent orders
         foreach ($recentOrders as $ord) {
@@ -39,16 +40,6 @@ class DashboardController extends Controller
         
         // Get urgent orders (rush or due soon)
         $urgentOrders = $order->getUrgentOrders();
-        
-        // Count rush orders (due within 7 days)
-        $rushCount = 0;
-        $sevenDaysFromNow = strtotime('+7 days');
-        foreach ($order->findAll([], 'date_due ASC') as $ord) {
-            if (strtotime($ord->date_due) <= $sevenDaysFromNow && $ord->payment_status !== 'paid') {
-                $rushCount++;
-            }
-        }
-        $stats['rush_orders'] = $rushCount;
         
         $this->view('dashboard/index', [
             'stats' => $stats,

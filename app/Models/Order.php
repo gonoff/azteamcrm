@@ -133,7 +133,15 @@ class Order extends Model
     
     public function getTotalRevenue()
     {
-        $sql = "SELECT SUM(order_total) as total FROM {$this->table}";
+        // Calculate total revenue including all charges (tax, shipping) minus discounts
+        $sql = "SELECT SUM(
+                    COALESCE(order_total, 0) + 
+                    COALESCE(tax_amount, 0) + 
+                    COALESCE(shipping_amount, 0) - 
+                    COALESCE(discount_amount, 0)
+                ) as total 
+                FROM {$this->table} 
+                WHERE order_status != 'cancelled'";
         $stmt = $this->db->query($sql);
         
         if ($stmt) {
@@ -145,7 +153,19 @@ class Order extends Model
     
     public function getTotalOutstanding()
     {
-        $sql = "SELECT SUM(order_total) as total FROM {$this->table} WHERE payment_status != 'paid'";
+        // Calculate actual remaining balance: (order_total + tax_amount + shipping_amount - discount_amount - amount_paid) for unpaid/partial orders
+        $sql = "SELECT SUM(
+                    GREATEST(0, 
+                        COALESCE(order_total, 0) + 
+                        COALESCE(tax_amount, 0) + 
+                        COALESCE(shipping_amount, 0) - 
+                        COALESCE(discount_amount, 0) - 
+                        COALESCE(amount_paid, 0)
+                    )
+                ) as total 
+                FROM {$this->table} 
+                WHERE payment_status != 'paid' 
+                AND order_status != 'cancelled'";
         $stmt = $this->db->query($sql);
         
         if ($stmt) {
@@ -279,6 +299,70 @@ class Order extends Model
                 WHERE date_due <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
                 AND payment_status != 'paid'
                 ORDER BY date_due ASC
+                LIMIT :limit";
+        
+        $stmt = $this->db->getConnection()->prepare($sql);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+    }
+    
+    public function countRushOrders()
+    {
+        // Count orders due within 7 days that aren't paid yet
+        $sql = "SELECT COUNT(*) as count 
+                FROM {$this->table} 
+                WHERE date_due <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) 
+                AND date_due >= CURDATE()
+                AND payment_status != 'paid' 
+                AND order_status != 'cancelled'";
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $result['count'] ?? 0;
+        }
+        return 0;
+    }
+    
+    public function countPendingOrders()
+    {
+        // Count orders with pending order_status (production status)
+        $sql = "SELECT COUNT(*) as count 
+                FROM {$this->table} 
+                WHERE order_status = 'pending'";
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $result['count'] ?? 0;
+        }
+        return 0;
+    }
+    
+    public function countUnpaidOrders()
+    {
+        // Count orders with unpaid payment_status
+        $sql = "SELECT COUNT(*) as count 
+                FROM {$this->table} 
+                WHERE payment_status = 'unpaid' 
+                AND order_status != 'cancelled'";
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $result['count'] ?? 0;
+        }
+        return 0;
+    }
+    
+    public function getRecentActiveOrders($limit = 10)
+    {
+        // Get recent orders excluding cancelled ones
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE order_status != 'cancelled' 
+                ORDER BY date_created DESC 
                 LIMIT :limit";
         
         $stmt = $this->db->getConnection()->prepare($sql);

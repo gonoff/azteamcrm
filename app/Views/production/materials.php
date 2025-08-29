@@ -44,50 +44,24 @@
                         ?>
                         <tr>
                             <td>
-                                <?php 
-                                $productType = $material['product_type'] ?: 'N/A';
-                                echo ucwords(str_replace('_', ' ', $productType));
+                                <?php
+                                // Use OrderItem helper method for consistent product type labeling
+                                $orderItemHelper->product_type = $material['product_type'];
+                                echo $orderItemHelper->getProductTypeLabel();
                                 ?>
                             </td>
                             <td>
-                                <?php 
-                                if (!$material['product_size']) {
-                                    echo 'N/A';
-                                } else {
-                                    $sizes = [
-                                        'child_xs' => 'Child XS',
-                                        'child_s' => 'Child S',
-                                        'child_m' => 'Child M',
-                                        'child_l' => 'Child L',
-                                        'child_xl' => 'Child XL',
-                                        'xs' => 'XS',
-                                        's' => 'S',
-                                        'm' => 'M',
-                                        'l' => 'L',
-                                        'xl' => 'XL',
-                                        'xxl' => 'XXL',
-                                        'xxxl' => 'XXXL',
-                                        'xxxxl' => 'XXXXL',
-                                        'one_size' => 'One Size'
-                                    ];
-                                    echo $sizes[strtolower($material['product_size'])] ?? $material['product_size'];
-                                }
+                                <?php
+                                // Use OrderItem helper method for consistent size labeling
+                                $orderItemHelper->product_size = $material['product_size'];
+                                echo $orderItemHelper->getSizeLabel();
                                 ?>
                             </td>
                             <td>
-                                <?php 
-                                if (!$material['custom_method']) {
-                                    echo 'N/A';
-                                } else {
-                                    $methods = [
-                                        'htv' => 'HTV',
-                                        'dft' => 'DFT',
-                                        'embroidery' => 'Embroidery',
-                                        'sublimation' => 'Sublimation',
-                                        'printing' => 'Printing Services'
-                                    ];
-                                    echo $methods[strtolower($material['custom_method'])] ?? ucwords(str_replace('_', ' ', $material['custom_method']));
-                                }
+                                <?php
+                                // Use OrderItem helper method for consistent method labeling
+                                $orderItemHelper->custom_method = $material['custom_method'];
+                                echo $orderItemHelper->getCustomMethodLabel();
                                 ?>
                             </td>
                             <td class="text-center"><?= $material['item_count'] ?></td>

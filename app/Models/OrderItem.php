@@ -31,6 +31,13 @@ class OrderItem extends Model
     {
         $this->attributes['order_item_status'] = $status;
         $this->order_item_status = $status;
+        
+        // Set completion timestamp when item is completed
+        if ($status === 'completed') {
+            $this->attributes['completed_at'] = date('Y-m-d H:i:s');
+            $this->completed_at = $this->attributes['completed_at'];
+        }
+        
         return $this->update();
     }
     
@@ -50,8 +57,11 @@ class OrderItem extends Model
     
     public function countInProduction()
     {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} 
-                WHERE order_item_status IN ('pending', 'in_production')";
+        // Only count items actually in production, not pending ones
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} oi
+                JOIN orders o ON oi.order_id = o.order_id
+                WHERE oi.order_item_status = 'in_production' 
+                AND o.order_status != 'cancelled'";
         $stmt = $this->db->query($sql);
         
         if ($stmt) {
@@ -254,16 +264,13 @@ class OrderItem extends Model
     
     public function getCompletedTodayCount()
     {
-        // Note: Without an updated_at column, we cannot track when items were completed
-        // This would require adding timestamp tracking to the order_items table
-        // For now, returning 0 as we cannot determine completion time
-        return 0;
-        
-        /* Future implementation when updated_at column is added:
+        // Now uses the completed_at timestamp to track when items were completed
         $sql = "SELECT COUNT(*) as count 
-                FROM {$this->table} 
-                WHERE order_item_status = 'completed' 
-                AND DATE(updated_at) = CURDATE()";
+                FROM {$this->table} oi
+                JOIN orders o ON oi.order_id = o.order_id
+                WHERE oi.order_item_status = 'completed' 
+                    AND DATE(oi.completed_at) = CURDATE()
+                    AND o.order_status NOT IN ('cancelled', 'on_hold')";
         
         $stmt = $this->db->query($sql);
         
@@ -272,7 +279,6 @@ class OrderItem extends Model
             return $result['count'] ?? 0;
         }
         return 0;
-        */
     }
     
     public function getItemsDueToday()
@@ -350,5 +356,233 @@ class OrderItem extends Model
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         }
         return [];
+    }
+    
+    public function searchAndPaginate($searchTerm, $searchFields, $page = 1, $perPage = 50, $conditions = [], $orderBy = 'date_due ASC')
+    {
+        $page = max(1, intval($page));
+        $perPage = max(1, min(100, intval($perPage))); // Limit max per page
+        $offset = ($page - 1) * $perPage;
+        
+        // Build the base query with joins
+        $baseQuery = "FROM order_items oi
+                     JOIN orders o ON oi.order_id = o.order_id
+                     JOIN customers c ON o.customer_id = c.customer_id";
+        
+        // Build WHERE clause
+        $whereClause = "WHERE o.order_status NOT IN ('cancelled', 'on_hold')";
+        $params = [];
+        
+        // Add conditions
+        if (!empty($conditions)) {
+            foreach ($conditions as $field => $value) {
+                if (is_array($value)) {
+                    $placeholders = [];
+                    foreach ($value as $i => $val) {
+                        $placeholder = $field . '_' . $i;
+                        $placeholders[] = ':' . $placeholder;
+                        $params[$placeholder] = $val;
+                    }
+                    $whereClause .= " AND oi.{$field} IN (" . implode(',', $placeholders) . ")";
+                } else {
+                    $whereClause .= " AND oi.{$field} = :{$field}";
+                    $params[$field] = $value;
+                }
+            }
+        }
+        
+        // Add search conditions
+        if (!empty($searchTerm) && !empty($searchFields)) {
+            $searchConditions = [];
+            foreach ($searchFields as $field) {
+                $searchConditions[] = "oi.{$field} LIKE :search";
+            }
+            $whereClause .= " AND (" . implode(' OR ', $searchConditions) . ")";
+            $params['search'] = '%' . $searchTerm . '%';
+        }
+        
+        // Count total items
+        $countSql = "SELECT COUNT(*) as total " . $baseQuery . " " . $whereClause;
+        $stmt = $this->db->query($countSql, $params);
+        $totalItems = $stmt ? ($stmt->fetch(\PDO::FETCH_ASSOC)['total'] ?? 0) : 0;
+        
+        // Get paginated data with urgency calculation
+        $dataSql = "SELECT 
+                        oi.*, 
+                        o.order_id,
+                        o.date_due,
+                        o.order_status,
+                        o.payment_status,
+                        c.full_name as customer_name,
+                        c.company_name,
+                        c.phone_number,
+                        CASE 
+                            WHEN o.date_due < CURDATE() THEN 'overdue'
+                            WHEN o.date_due = CURDATE() THEN 'due_today'
+                            WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 3 DAY) THEN 'due_soon'
+                            WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 'rush'
+                            ELSE 'normal'
+                        END as urgency_level
+                    " . $baseQuery . " " . $whereClause;
+        
+        if ($orderBy) {
+            $dataSql .= " ORDER BY " . $orderBy;
+        }
+        
+        $dataSql .= " LIMIT {$perPage} OFFSET {$offset}";
+        
+        $stmt = $this->db->query($dataSql, $params);
+        $data = [];
+        
+        if ($stmt) {
+            $results = $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+            foreach ($results as $item) {
+                // Ensure additional properties are set
+                $item->customer_name = $item->customer_name ?? 'Unknown';
+                $item->company_name = $item->company_name ?? '';
+                $item->phone_number = $item->phone_number ?? '';
+                $item->urgency_level = $item->urgency_level ?? 'normal';
+                $data[] = $item;
+            }
+        }
+        
+        // Calculate pagination info
+        $totalPages = ceil($totalItems / $perPage);
+        
+        return [
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total_items' => $totalItems,
+                'total_pages' => $totalPages,
+                'has_previous' => $page > 1,
+                'has_next' => $page < $totalPages,
+                'previous_page' => $page > 1 ? $page - 1 : null,
+                'next_page' => $page < $totalPages ? $page + 1 : null,
+                'start_item' => $totalItems > 0 ? $offset + 1 : 0,
+                'end_item' => min($offset + $perPage, $totalItems)
+            ]
+        ];
+    }
+    
+    public function getProductionStatistics()
+    {
+        // Get comprehensive production statistics
+        $sql = "SELECT 
+                    COUNT(*) as total_active,
+                    SUM(CASE WHEN oi.order_item_status = 'pending' THEN 1 ELSE 0 END) as total_pending,
+                    SUM(CASE WHEN oi.order_item_status = 'in_production' THEN 1 ELSE 0 END) as in_production,
+                    SUM(CASE WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) 
+                                 AND o.date_due > DATE_ADD(CURDATE(), INTERVAL 3 DAY)
+                                 AND o.date_due > CURDATE()
+                                 THEN 1 ELSE 0 END) as rush_items,
+                    SUM(CASE WHEN o.date_due < CURDATE() THEN 1 ELSE 0 END) as overdue_items,
+                    SUM(CASE WHEN oi.supplier_status IN ('awaiting_order', 'order_made') THEN 1 ELSE 0 END) as awaiting_supplier
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.order_id
+                WHERE oi.order_item_status != 'completed'
+                    AND o.order_status NOT IN ('cancelled', 'on_hold')";
+        
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return [
+                'total_pending' => (int)($result['total_pending'] ?? 0),
+                'in_production' => (int)($result['in_production'] ?? 0),
+                'completed_today' => $this->getCompletedTodayCount(), // Now works with completion tracking
+                'rush_items' => (int)($result['rush_items'] ?? 0),
+                'overdue_items' => (int)($result['overdue_items'] ?? 0),
+                'awaiting_supplier' => (int)($result['awaiting_supplier'] ?? 0)
+            ];
+        }
+        
+        return [
+            'total_pending' => 0,
+            'in_production' => 0,
+            'completed_today' => 0,
+            'rush_items' => 0,
+            'overdue_items' => 0,
+            'awaiting_supplier' => 0
+        ];
+    }
+    
+    public function getProductionItemsPaginated($page = 1, $perPage = 50, $orderBy = 'date_due ASC')
+    {
+        $page = max(1, intval($page));
+        $perPage = max(1, min(100, intval($perPage)));
+        $offset = ($page - 1) * $perPage;
+        
+        // Count total items
+        $countSql = "SELECT COUNT(*) as total 
+                     FROM order_items oi
+                     JOIN orders o ON oi.order_id = o.order_id
+                     WHERE oi.order_item_status != 'completed'
+                         AND o.order_status NOT IN ('cancelled', 'on_hold')";
+        
+        $stmt = $this->db->query($countSql);
+        $totalItems = $stmt ? ($stmt->fetch(\PDO::FETCH_ASSOC)['total'] ?? 0) : 0;
+        
+        // Get paginated production items with urgency calculation
+        $dataSql = "SELECT 
+                        oi.*, 
+                        o.order_id,
+                        o.date_due,
+                        o.order_status,
+                        o.payment_status,
+                        c.full_name as customer_name,
+                        c.company_name,
+                        c.phone_number,
+                        CASE 
+                            WHEN o.date_due < CURDATE() THEN 'overdue'
+                            WHEN o.date_due = CURDATE() THEN 'due_today'
+                            WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 3 DAY) THEN 'due_soon'
+                            WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 'rush'
+                            ELSE 'normal'
+                        END as urgency_level
+                    FROM order_items oi
+                    JOIN orders o ON oi.order_id = o.order_id
+                    JOIN customers c ON o.customer_id = c.customer_id
+                    WHERE oi.order_item_status != 'completed'
+                        AND o.order_status NOT IN ('cancelled', 'on_hold')
+                    ORDER BY 
+                        FIELD(urgency_level, 'overdue', 'due_today', 'due_soon', 'rush', 'normal'),
+                        {$orderBy}
+                    LIMIT {$perPage} OFFSET {$offset}";
+        
+        $stmt = $this->db->query($dataSql);
+        $data = [];
+        
+        if ($stmt) {
+            $results = $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+            foreach ($results as $item) {
+                // Ensure additional properties are set
+                $item->customer_name = $item->customer_name ?? 'Unknown';
+                $item->company_name = $item->company_name ?? '';
+                $item->phone_number = $item->phone_number ?? '';
+                $item->urgency_level = $item->urgency_level ?? 'normal';
+                $data[] = $item;
+            }
+        }
+        
+        // Calculate pagination info
+        $totalPages = ceil($totalItems / $perPage);
+        
+        return [
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total_items' => $totalItems,
+                'total_pages' => $totalPages,
+                'has_previous' => $page > 1,
+                'has_next' => $page < $totalPages,
+                'previous_page' => $page > 1 ? $page - 1 : null,
+                'next_page' => $page < $totalPages ? $page + 1 : null,
+                'start_item' => $totalItems > 0 ? $offset + 1 : 0,
+                'end_item' => min($offset + $perPage, $totalItems)
+            ]
+        ];
     }
 }
