@@ -235,11 +235,43 @@ abstract class Model
     {
         return $this->attributes;
     }
-    
+
+    /**
+     * Sanitize ORDER BY clause against allowed columns
+     */
+    protected function sanitizeOrderBy($orderBy, array $allowed)
+    {
+        if (empty($orderBy) || empty($allowed)) {
+            return null;
+        }
+
+        $parts = explode(',', $orderBy);
+        $sanitized = [];
+
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+
+            if (preg_match('/^([a-zA-Z0-9_\.]+)(?:\s+(ASC|DESC))?$/i', $part, $matches)) {
+                $column = $matches[1];
+                $direction = strtoupper($matches[2] ?? 'ASC');
+
+                if (in_array($column, $allowed)) {
+                    $direction = in_array($direction, ['ASC', 'DESC']) ? $direction : 'ASC';
+                    $sanitized[] = "$column $direction";
+                }
+            }
+        }
+
+        return $sanitized ? implode(', ', $sanitized) : null;
+    }
+
     /**
      * Pagination Support Methods
      */
-    public function paginate($page = 1, $perPage = 20, $conditions = [], $orderBy = null)
+    public function paginate($page = 1, $perPage = 20, $conditions = [], $orderBy = null, array $allowedOrderColumns = [])
     {
         $page = max(1, intval($page));
         $perPage = max(1, min(100, intval($perPage))); // Limit max per page to 100
@@ -259,7 +291,10 @@ abstract class Model
         }
         
         if ($orderBy) {
-            $sql .= " ORDER BY {$orderBy}";
+            $orderBy = $this->sanitizeOrderBy($orderBy, $allowedOrderColumns);
+            if ($orderBy) {
+                $sql .= " ORDER BY {$orderBy}";
+            }
         }
         
         $sql .= " LIMIT {$perPage} OFFSET {$offset}";
@@ -292,7 +327,7 @@ abstract class Model
         ];
     }
     
-    public function searchAndPaginate($searchTerm, $searchFields, $page = 1, $perPage = 20, $conditions = [], $orderBy = null)
+    public function searchAndPaginate($searchTerm, $searchFields, $page = 1, $perPage = 20, $conditions = [], $orderBy = null, array $allowedOrderColumns = [])
     {
         $page = max(1, intval($page));
         $perPage = max(1, min(100, intval($perPage)));
@@ -326,7 +361,10 @@ abstract class Model
         }
         
         if ($orderBy) {
-            $sql .= " ORDER BY {$orderBy}";
+            $orderBy = $this->sanitizeOrderBy($orderBy, $allowedOrderColumns);
+            if ($orderBy) {
+                $sql .= " ORDER BY {$orderBy}";
+            }
         }
         
         $sql .= " LIMIT {$perPage} OFFSET {$offset}";
