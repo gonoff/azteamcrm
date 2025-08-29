@@ -394,22 +394,22 @@ class Order extends Model
     public function getStatusBadge()
     {
         if ($this->payment_status === 'paid') {
-            return '<span class="badge badge-success">Paid</span>';
+            return '<span class="badge bg-success">Paid</span>';
         } elseif ($this->payment_status === 'partial') {
-            return '<span class="badge badge-warning">Partial</span>';
+            return '<span class="badge bg-warning text-dark">Partial</span>';
         } else {
-            return '<span class="badge badge-danger">Unpaid</span>';
+            return '<span class="badge bg-danger">Unpaid</span>';
         }
     }
     
     public function getUrgencyBadge()
     {
         if ($this->isOverdue()) {
-            return '<span class="badge badge-danger">Overdue</span>';
+            return '<span class="badge bg-danger">Overdue</span>';
         } elseif ($this->isRushOrder()) {
-            return '<span class="badge badge-danger">RUSH</span>';
+            return '<span class="badge bg-danger">RUSH</span>';
         } elseif ($this->isDueSoon()) {
-            return '<span class="badge badge-warning">Due Soon</span>';
+            return '<span class="badge bg-warning text-dark">Due Soon</span>';
         }
         return '';
     }
@@ -417,13 +417,13 @@ class Order extends Model
     public function getOrderStatusBadge()
     {
         $badges = [
-            'pending' => '<span class="badge badge-warning">Pending</span>',
-            'in_production' => '<span class="badge badge-info">In Production</span>',
-            'completed' => '<span class="badge badge-success">Completed</span>',
-            'cancelled' => '<span class="badge badge-secondary">Cancelled</span>'
+            'pending' => '<span class="badge bg-warning text-dark">Pending</span>',
+            'in_production' => '<span class="badge bg-info text-dark">In Production</span>',
+            'completed' => '<span class="badge bg-success">Completed</span>',
+            'cancelled' => '<span class="badge bg-secondary">Cancelled</span>'
         ];
         
-        return $badges[$this->order_status] ?? '<span class="badge badge-secondary">' . ucfirst($this->order_status) . '</span>';
+        return $badges[$this->order_status] ?? '<span class="badge bg-secondary">' . ucfirst($this->order_status) . '</span>';
     }
     
     public function getPaymentStatusBadge()

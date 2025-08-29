@@ -46,9 +46,9 @@ class Customer extends Model
     public function getStatusBadge()
     {
         if ($this->customer_status === 'active') {
-            return '<span class="badge badge-success">Active</span>';
+            return '<span class="badge bg-success">Active</span>';
         } else {
-            return '<span class="badge badge-secondary">Inactive</span>';
+            return '<span class="badge bg-secondary">Inactive</span>';
         }
     }
     

@@ -12,7 +12,7 @@ class OrderItem extends Model
         'order_item_status', 'order_id', 'user_id', 'quantity',
         'unit_price', 'product_type', 'product_description',
         'product_size', 'custom_method', 'custom_area',
-        'supplier_status', 'note_item'
+        'supplier_status', 'material_prepared', 'note_item'
     ];
     
     public function getOrder()
@@ -93,29 +93,29 @@ class OrderItem extends Model
         // Item status is now limited to: pending, in_production, completed
         // 'cancelled' is kept for legacy data but not available in forms
         $badges = [
-            'pending' => '<span class="badge badge-warning">Pending</span>',
-            'in_production' => '<span class="badge badge-info">In Production</span>',
-            'completed' => '<span class="badge badge-success">Completed</span>',
-            'cancelled' => '<span class="badge badge-secondary">Cancelled</span>' // Legacy support
+            'pending' => '<span class="badge bg-warning text-dark">Pending</span>',
+            'in_production' => '<span class="badge bg-info text-dark">In Production</span>',
+            'completed' => '<span class="badge bg-success">Completed</span>',
+            'cancelled' => '<span class="badge bg-secondary">Cancelled</span>' // Legacy support
         ];
         
-        return $badges[$this->order_item_status] ?? '<span class="badge badge-secondary">' . ucfirst($this->order_item_status) . '</span>';
+        return $badges[$this->order_item_status] ?? '<span class="badge bg-secondary">' . ucfirst($this->order_item_status) . '</span>';
     }
     
     public function getSupplierStatusBadge()
     {
         if (!$this->supplier_status) {
-            return '<span class="badge badge-light">N/A</span>';
+            return '<span class="badge bg-light text-dark">N/A</span>';
         }
         
         $badges = [
-            'awaiting_order' => '<span class="badge badge-secondary">Awaiting Order</span>',
-            'order_made' => '<span class="badge badge-info">Order Made</span>',
-            'order_arrived' => '<span class="badge badge-primary">Arrived</span>',
-            'order_delivered' => '<span class="badge badge-success">Delivered</span>'
+            'awaiting_order' => '<span class="badge bg-secondary">Waiting</span>',
+            'order_made' => '<span class="badge bg-success">Order Made</span>',
+            'order_arrived' => '<span class="badge bg-danger">Order Arrived</span>',
+            'order_delivered' => '<span class="badge bg-primary">Order Delivered</span>'
         ];
         
-        return $badges[$this->supplier_status] ?? '<span class="badge badge-secondary">' . ucfirst(str_replace('_', ' ', $this->supplier_status)) . '</span>';
+        return $badges[$this->supplier_status] ?? '<span class="badge bg-secondary">' . ucfirst(str_replace('_', ' ', $this->supplier_status)) . '</span>';
     }
     
     public function getSizeLabel()
@@ -192,10 +192,10 @@ class OrderItem extends Model
         }
         
         $badges = [
-            'overdue' => '<span class="badge badge-danger">OVERDUE</span>',
-            'due_today' => '<span class="badge badge-warning">DUE TODAY</span>',
-            'due_soon' => '<span class="badge badge-info">DUE SOON</span>',
-            'rush' => '<span class="badge badge-danger">RUSH</span>',
+            'overdue' => '<span class="badge bg-danger">OVERDUE</span>',
+            'due_today' => '<span class="badge bg-warning text-dark">DUE TODAY</span>',
+            'due_soon' => '<span class="badge bg-info text-dark">DUE SOON</span>',
+            'rush' => '<span class="badge bg-danger">RUSH</span>',
             'normal' => ''
         ];
         
@@ -584,5 +584,159 @@ class OrderItem extends Model
                 'end_item' => min($offset + $perPage, $totalItems)
             ]
         ];
+    }
+    
+    public function updateMaterialPrepared($prepared = true)
+    {
+        $this->attributes['material_prepared'] = $prepared ? 1 : 0;
+        $this->material_prepared = $this->attributes['material_prepared'];
+        return $this->update();
+    }
+    
+    public function getSupplierTrackingData($sortBy = 'urgency')
+    {
+        // Build ORDER BY clause based on sort parameter
+        $orderByClause = '';
+        switch($sortBy) {
+            case 'due_date_asc':
+                $orderByClause = 'o.date_due ASC, o.order_id ASC, oi.order_item_id ASC';
+                break;
+            case 'due_date_desc':
+                $orderByClause = 'o.date_due DESC, o.order_id ASC, oi.order_item_id ASC';
+                break;
+            case 'order_date_asc':
+                $orderByClause = 'o.date_created ASC, o.order_id ASC, oi.order_item_id ASC';
+                break;
+            case 'order_date_desc':
+                $orderByClause = 'o.date_created DESC, o.order_id ASC, oi.order_item_id ASC';
+                break;
+            case 'customer_name':
+                $orderByClause = 'c.full_name ASC, o.order_id ASC, oi.order_item_id ASC';
+                break;
+            case 'urgency':
+            default:
+                $orderByClause = 'FIELD(urgency_level, \'overdue\', \'rush\', \'normal\'), o.date_due ASC, o.order_id ASC, oi.order_item_id ASC';
+                break;
+        }
+
+        $sql = "SELECT 
+                    o.order_id,
+                    o.date_created as order_date,
+                    o.date_due,
+                    o.order_status,
+                    c.full_name as customer_name,
+                    c.company_name,
+                    CASE 
+                        WHEN o.date_due < CURDATE() THEN 'overdue'
+                        WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 'rush'
+                        ELSE 'normal'
+                    END as urgency_level,
+                    oi.*
+                FROM orders o
+                JOIN order_items oi ON o.order_id = oi.order_id
+                JOIN customers c ON o.customer_id = c.customer_id
+                WHERE o.order_status != 'completed'
+                    AND o.order_status NOT IN ('cancelled', 'on_hold')
+                ORDER BY {$orderByClause}";
+        
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            $results = $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+            // Group by order_id to organize data
+            $orders = [];
+            foreach ($results as $item) {
+                $orderId = $item->order_id;
+                
+                if (!isset($orders[$orderId])) {
+                    $orders[$orderId] = [
+                        'order_id' => $item->order_id,
+                        'order_date' => $item->order_date,
+                        'date_due' => $item->date_due,
+                        'customer_name' => $item->customer_name,
+                        'company_name' => $item->company_name,
+                        'urgency_level' => $item->urgency_level,
+                        'items' => []
+                    ];
+                }
+                
+                $orders[$orderId]['items'][] = $item;
+            }
+            
+            return array_values($orders); // Return indexed array
+        }
+        return [];
+    }
+    
+    public function getCompletedOrdersData($sortBy = 'due_date_desc')
+    {
+        // Build ORDER BY clause based on sort parameter
+        $orderByClause = '';
+        switch($sortBy) {
+            case 'due_date_asc':
+                $orderByClause = 'o.date_due ASC, o.order_id ASC, oi.order_item_id ASC';
+                break;
+            case 'due_date_desc':
+                $orderByClause = 'o.date_due DESC, o.order_id DESC, oi.order_item_id ASC';
+                break;
+            case 'order_date_asc':
+                $orderByClause = 'o.date_created ASC, o.order_id ASC, oi.order_item_id ASC';
+                break;
+            case 'order_date_desc':
+                $orderByClause = 'o.date_created DESC, o.order_id DESC, oi.order_item_id ASC';
+                break;
+            case 'customer_name':
+                $orderByClause = 'c.full_name ASC, o.order_id ASC, oi.order_item_id ASC';
+                break;
+            case 'urgency':
+            default:
+                // For completed orders, default to most recent due date first
+                $orderByClause = 'o.date_due DESC, o.order_id DESC, oi.order_item_id ASC';
+                break;
+        }
+
+        $sql = "SELECT 
+                    o.order_id,
+                    o.date_created as order_date,
+                    o.date_due,
+                    o.order_status,
+                    c.full_name as customer_name,
+                    c.company_name,
+                    'completed' as urgency_level,
+                    oi.*
+                FROM orders o
+                JOIN order_items oi ON o.order_id = oi.order_id
+                JOIN customers c ON o.customer_id = c.customer_id
+                WHERE o.order_status = 'completed'
+                    OR oi.order_item_status = 'completed'
+                ORDER BY {$orderByClause}";
+        
+        $stmt = $this->db->query($sql);
+        
+        if ($stmt) {
+            $results = $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+            // Group by order_id to organize data
+            $orders = [];
+            foreach ($results as $item) {
+                $orderId = $item->order_id;
+                
+                if (!isset($orders[$orderId])) {
+                    $orders[$orderId] = [
+                        'order_id' => $item->order_id,
+                        'order_date' => $item->order_date,
+                        'date_due' => $item->date_due,
+                        'customer_name' => $item->customer_name,
+                        'company_name' => $item->company_name,
+                        'urgency_level' => $item->urgency_level,
+                        'items' => []
+                    ];
+                }
+                
+                $orders[$orderId]['items'][] = $item;
+            }
+            
+            return array_values($orders); // Return indexed array
+        }
+        return [];
     }
 }

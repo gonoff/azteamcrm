@@ -187,4 +187,65 @@ class ProductionController extends Controller
             ]);
         }
     }
+    
+    public function supplierTracking()
+    {
+        $tab = $_GET['tab'] ?? 'active'; // Default to active orders tab
+        $sort = $_GET['sort'] ?? null; // Get sort parameter
+        
+        // Validate and set default sort based on tab
+        $validSorts = ['urgency', 'due_date_asc', 'due_date_desc', 'order_date_asc', 'order_date_desc', 'customer_name'];
+        
+        if (!in_array($sort, $validSorts)) {
+            // Set appropriate defaults for each tab
+            $sort = ($tab === 'completed') ? 'due_date_desc' : 'urgency';
+        }
+        
+        $orderItem = new OrderItem();
+        
+        if ($tab === 'completed') {
+            $ordersData = $orderItem->getCompletedOrdersData($sort);
+        } else {
+            $ordersData = $orderItem->getSupplierTrackingData($sort);
+        }
+        
+        $this->view('production/supplier-tracking', [
+            'orders' => $ordersData,
+            'activeTab' => $tab,
+            'currentSort' => $sort,
+            'csrf_token' => $this->csrf()
+        ]);
+    }
+    
+    public function updateMaterialPrepared()
+    {
+        if (!$this->isPost()) {
+            $this->json(['success' => false, 'message' => 'Invalid request method']);
+            return;
+        }
+        
+        $this->verifyCsrf();
+        
+        $itemId = intval($_POST['item_id'] ?? 0);
+        $prepared = isset($_POST['prepared']) && $_POST['prepared'] === '1';
+        
+        if (!$itemId) {
+            $this->json(['success' => false, 'message' => 'Invalid item ID']);
+            return;
+        }
+        
+        $orderItem = new OrderItem();
+        $item = $orderItem->find($itemId);
+        
+        if (!$item) {
+            $this->json(['success' => false, 'message' => 'Item not found']);
+            return;
+        }
+        
+        if ($item->updateMaterialPrepared($prepared)) {
+            $this->json(['success' => true, 'message' => 'Material preparation status updated successfully']);
+        } else {
+            $this->json(['success' => false, 'message' => 'Failed to update material preparation status']);
+        }
+    }
 }

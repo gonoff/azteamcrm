@@ -61,6 +61,11 @@
                                 <i class="bi bi-gear"></i> <span class="nav-text">Production</span>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/azteamcrm/production/supplier-tracking" data-bs-toggle="tooltip" data-bs-placement="right" title="Supplier Tracking">
+                                <i class="bi bi-truck"></i> <span class="nav-text">Supplier Tracking</span>
+                            </a>
+                        </li>
                         <?php /* Commented out - Controllers/Views not implemented yet
                         <?php if ($_SESSION['user_role'] === 'administrator'): ?>
                         <li class="nav-item">

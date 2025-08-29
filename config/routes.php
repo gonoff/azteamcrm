@@ -63,7 +63,9 @@ return [
     '/production/pending' => 'ProductionController@pending',
     '/production/today' => 'ProductionController@today',
     '/production/materials' => 'ProductionController@materials',
+    '/production/supplier-tracking' => 'ProductionController@supplierTracking',
     '/production/bulk-update' => 'ProductionController@updateBulkStatus',
+    '/production/update-material-prepared' => 'ProductionController@updateMaterialPrepared',
     
     // Reports - COMMENTED: Controller doesn't exist
     // '/reports' => 'ReportController@index',
