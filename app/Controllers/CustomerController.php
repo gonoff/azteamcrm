@@ -22,7 +22,8 @@ class CustomerController extends Controller
         $page = intval($_GET['page'] ?? 1);
         $perPage = SettingsService::getDefaultPageSize();
         $search = trim($_GET['search'] ?? '');
-        
+        $allowedSortColumns = ['customer_id', 'full_name', 'company_name', 'phone_number', 'email', 'date_created'];
+
         // Get paginated results with search
         if (!empty($search)) {
             $result = $customer->searchAndPaginate(
@@ -31,10 +32,11 @@ class CustomerController extends Controller
                 $page,
                 $perPage,
                 [],
-                'full_name ASC'
+                'full_name ASC',
+                $allowedSortColumns
             );
         } else {
-            $result = $customer->paginate($page, $perPage, [], 'full_name ASC');
+            $result = $customer->paginate($page, $perPage, [], 'full_name ASC', $allowedSortColumns);
         }
         
         $this->view('customers/index', [

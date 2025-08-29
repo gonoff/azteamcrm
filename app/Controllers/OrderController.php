@@ -21,7 +21,8 @@ class OrderController extends Controller
         $page = intval($_GET['page'] ?? 1);
         $perPage = SettingsService::getDefaultPageSize();
         $search = trim($_GET['search'] ?? '');
-        
+        $allowedSortColumns = ['order_id', 'date_created', 'date_due', 'order_status', 'payment_status'];
+
         // Get paginated results with search
         if (!empty($search)) {
             $result = $order->searchAndPaginate(
@@ -30,10 +31,11 @@ class OrderController extends Controller
                 $page,
                 $perPage,
                 [],
-                'date_created DESC'
+                'date_created DESC',
+                $allowedSortColumns
             );
         } else {
-            $result = $order->paginate($page, $perPage, [], 'date_created DESC');
+            $result = $order->paginate($page, $perPage, [], 'date_created DESC', $allowedSortColumns);
         }
         
         // Load customer data for each order

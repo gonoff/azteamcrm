@@ -358,7 +358,7 @@ class OrderItem extends Model
         return [];
     }
     
-    public function searchAndPaginate($searchTerm, $searchFields, $page = 1, $perPage = 50, $conditions = [], $orderBy = 'date_due ASC')
+    public function searchAndPaginate($searchTerm, $searchFields, $page = 1, $perPage = 50, $conditions = [], $orderBy = 'date_due ASC', array $allowedOrderColumns = ['date_due'])
     {
         $page = max(1, intval($page));
         $perPage = max(1, min(100, intval($perPage))); // Limit max per page
@@ -426,7 +426,10 @@ class OrderItem extends Model
                     " . $baseQuery . " " . $whereClause;
         
         if ($orderBy) {
-            $dataSql .= " ORDER BY " . $orderBy;
+            $orderBy = $this->sanitizeOrderBy($orderBy, $allowedOrderColumns);
+            if ($orderBy) {
+                $dataSql .= " ORDER BY " . $orderBy;
+            }
         }
         
         $dataSql .= " LIMIT {$perPage} OFFSET {$offset}";

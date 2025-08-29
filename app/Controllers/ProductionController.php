@@ -23,7 +23,8 @@ class ProductionController extends Controller
         $page = intval($_GET['page'] ?? 1);
         $perPage = SettingsService::getProductionPageSize(); // Show more items on production dashboard
         $search = trim($_GET['search'] ?? '');
-        
+        $allowedSortColumns = ['date_due', 'order_id', 'order_item_id'];
+
         // Get paginated production items using efficient SQL pagination
         if (!empty($search)) {
             $result = $orderItem->searchAndPaginate(
@@ -32,7 +33,8 @@ class ProductionController extends Controller
                 $page,
                 $perPage,
                 ['order_item_status' => ['pending', 'in_production']], // Active items only
-                'date_due ASC'
+                'date_due ASC',
+                $allowedSortColumns
             );
         } else {
             // Use efficient SQL-based pagination instead of loading all items into memory
