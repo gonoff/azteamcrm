@@ -67,6 +67,18 @@ return [
     '/production/bulk-update' => 'ProductionController@updateBulkStatus',
     '/production/update-material-prepared' => 'ProductionController@updateMaterialPrepared',
     
+    // Settings Management (Admin only)
+    '/settings' => 'SettingsController@index',
+    '/settings/update' => 'SettingsController@update',
+    '/settings/reset-setting' => 'SettingsController@resetSetting',
+    '/settings/reset-category' => 'SettingsController@resetCategory',
+    '/settings/export' => 'SettingsController@export',
+    '/settings/import' => 'SettingsController@import',
+    '/settings/get-value' => 'SettingsController@getValue',
+    '/settings/set-value' => 'SettingsController@setValue',
+    '/settings/clear-cache' => 'SettingsController@clearCache',
+    '/settings/check-restart' => 'SettingsController@checkRestartRequired',
+    
     // Reports - COMMENTED: Controller doesn't exist
     // '/reports' => 'ReportController@index',
     // '/reports/financial' => 'ReportController@financial',

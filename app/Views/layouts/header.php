@@ -66,15 +66,23 @@
                                 <i class="bi bi-truck"></i> <span class="nav-text">Supplier Tracking</span>
                             </a>
                         </li>
-                        <?php /* Commented out - Controllers/Views not implemented yet
+                        
+                        <!-- Administrator-only sections -->
                         <?php if ($_SESSION['user_role'] === 'administrator'): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/azteamcrm/settings" data-bs-toggle="tooltip" data-bs-placement="right" title="System Settings">
+                                <i class="bi bi-gear"></i> <span class="nav-text">Settings</span>
+                            </a>
+                        </li>
+                        <?php /* Commented out - Controllers/Views not implemented yet
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/reports" data-bs-toggle="tooltip" data-bs-placement="right" title="Reports">
                                 <i class="bi bi-graph-up"></i> <span class="nav-text">Reports</span>
                             </a>
                         </li>
-                        <?php endif; ?>
                         */ ?>
+                        <?php endif; ?>
+                        
                         <li class="nav-item mt-3">
                             <a class="nav-link text-danger" href="/azteamcrm/logout" data-bs-toggle="tooltip" data-bs-placement="right" title="Logout">
                                 <i class="bi bi-box-arrow-right"></i> <span class="nav-text">Logout</span>

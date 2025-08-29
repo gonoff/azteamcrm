@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Services\SettingsService;
 
 class CustomerController extends Controller
 {
@@ -19,7 +20,7 @@ class CustomerController extends Controller
         
         // Get pagination parameters
         $page = intval($_GET['page'] ?? 1);
-        $perPage = 20;
+        $perPage = SettingsService::getDefaultPageSize();
         $search = trim($_GET['search'] ?? '');
         
         // Get paginated results with search
@@ -105,10 +106,11 @@ class CustomerController extends Controller
         }
         
         // Validation
+        $phoneMinLength = SettingsService::getPhoneNumberLength();
         $validationRules = [
             'full_name' => 'required|min:2',
             'company_name' => 'required|min:2',
-            'phone_number' => 'required|min:10',
+            'phone_number' => 'required|min:' . $phoneMinLength,
             'state' => 'max:2'  // Only validate max length if state is provided
         ];
         
@@ -293,10 +295,11 @@ class CustomerController extends Controller
         }
         
         // Validation
+        $phoneMinLength = SettingsService::getPhoneNumberLength();
         $errors = $this->validate($data, [
             'full_name' => 'required|min:2',
             'company_name' => 'required|min:2',
-            'phone_number' => 'required|min:10',
+            'phone_number' => 'required|min:' . $phoneMinLength,
             'state' => 'max:2'  // Only validate max length if state is provided
         ]);
         

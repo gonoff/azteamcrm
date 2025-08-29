@@ -93,7 +93,7 @@ mysql -u root -p azteamerp < azteamerp.sql
 # Configure environment
 cp .env.example .env
 # Edit .env with your database credentials
-# Note: Default .env.example uses DB_DATABASE=azteamcrm, update to azteamerp
+# Note: Default .env.example uses DB_DATABASE=azteamcrm, update to azteamerp for current database
 
 # Reset database (if needed)
 /opt/lampp/bin/mysql -u root -p -e "DROP DATABASE IF EXISTS azteamerp; CREATE DATABASE azteamerp;"
@@ -270,6 +270,10 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
   - Grouped by product type, size, and customization method
   - Export to CSV functionality
   - Summary by product type
+- **Supplier Tracking** (`/production/supplier-tracking`): NEW - Dedicated supplier management
+  - Track supplier orders and deliveries
+  - Material preparation tracking
+  - Supplier status workflows
 - **Features**:
   - AJAX-based status updates without page reload
   - Keyboard navigation support
@@ -381,6 +385,15 @@ chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 '/production/today' => 'ProductionController@today'               // Today's schedule
 '/production/materials' => 'ProductionController@materials'       // Materials report
 '/production/bulk-update' => 'ProductionController@updateBulkStatus' // Bulk status update
+'/production/supplier-tracking' => 'ProductionController@supplierTracking'   // Supplier tracking view
+'/production/update-material-prepared' => 'ProductionController@updateMaterialPrepared' // Material prep updates
+
+// Order-specific routes (NEW)
+'/orders/{id}/update-shipping' => 'OrderController@updateShipping'    // Update shipping info
+'/orders/{id}/update-discount' => 'OrderController@updateDiscount'    // Update discount
+'/orders/{id}/toggle-tax' => 'OrderController@toggleTax'              // Toggle tax calculation
+'/orders/{id}/process-payment' => 'OrderController@processPayment'    // Process payment
+'/order-items/{id}/update-inline' => 'OrderItemController@updateInline' // Inline item updates
 
 // Pending Implementation (currently commented in routes.php)
 // '/reports' => 'ReportController@index'                  // Reports dashboard
@@ -677,6 +690,7 @@ $this->isGet();                      // Check if GET request
 - **Customer not selected after creation**: Use URL parameters (`?customer_id=X`) to pass customer ID across redirects, with JavaScript bridge as fallback
 - **Inline styles in views**: Move all inline styles to `/assets/css/app.css` and use CSS classes instead
 - **JavaScript style.display changes**: Use Bootstrap's `d-none` class with `classList.add/remove()` instead of direct style manipulation
+- **Recent updates**: Modified files tracking shows recent work on ProductionController, Customer model, Order model, OrderItem model, and layouts
 
 ### Debugging
 ```php

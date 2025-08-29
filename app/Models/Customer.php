@@ -79,7 +79,8 @@ class Customer extends Model
     public function formatPhoneNumber()
     {
         $phone = preg_replace('/[^0-9]/', '', $this->phone_number);
-        if (strlen($phone) === 10) {
+        $expectedLength = \App\Services\SettingsService::getPhoneNumberLength();
+        if (strlen($phone) === $expectedLength) {
             return sprintf('(%s) %s-%s', 
                 substr($phone, 0, 3), 
                 substr($phone, 3, 3), 
@@ -89,8 +90,13 @@ class Customer extends Model
         return $this->phone_number;
     }
     
-    public function searchCustomers($query, $limit = 20)
+    public function searchCustomers($query, $limit = null)
     {
+        // Use default customer search limit if not specified
+        if ($limit === null) {
+            $limit = \App\Services\SettingsService::getCustomerSearchLimit();
+        }
+        
         // Sanitize the query for use in LIKE statements
         $searchTerm = '%' . $query . '%';
         

@@ -6,6 +6,7 @@ use App\Core\Controller;
 use App\Models\Order;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\SettingsService;
 use Exception;
 
 class OrderController extends Controller
@@ -18,7 +19,7 @@ class OrderController extends Controller
         
         // Get pagination parameters
         $page = intval($_GET['page'] ?? 1);
-        $perPage = 20;
+        $perPage = SettingsService::getDefaultPageSize();
         $search = trim($_GET['search'] ?? '');
         
         // Get paginated results with search
@@ -283,9 +284,10 @@ class OrderController extends Controller
         
         // Calculate tax amount based on checkbox
         if ($data['apply_ct_tax']) {
-            // Calculate 6.35% of the order total
+            // Calculate Connecticut tax of the order total
             $subtotal = floatval($orderData->order_total ?? 0);
-            $data['tax_amount'] = round($subtotal * 0.0635, 2);
+            $taxRate = SettingsService::getCtTaxRate();
+            $data['tax_amount'] = round($subtotal * $taxRate, 2);
         } else {
             $data['tax_amount'] = 0.00;
         }
@@ -566,10 +568,11 @@ class OrderController extends Controller
             
             // Recalculate tax amount based on current order total
             if ($applyTax) {
-                // Calculate 6.35% Connecticut tax on order subtotal
+                // Calculate Connecticut tax on order subtotal
                 $subtotal = floatval($orderData->order_total ?? 0);
-                $taxAmount = round($subtotal * 0.0635, 2);
-                error_log("Tax calculation: $subtotal * 0.0635 = $taxAmount");
+                $taxRate = SettingsService::getCtTaxRate();
+                $taxAmount = round($subtotal * $taxRate, 2);
+                error_log("Tax calculation: $subtotal * $taxRate = $taxAmount");
             } else {
                 $taxAmount = 0.00;
                 error_log("Tax disabled, amount set to 0.00");

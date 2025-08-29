@@ -6,6 +6,7 @@ use App\Core\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Customer;
+use App\Services\SettingsService;
 
 class ProductionController extends Controller
 {
@@ -20,7 +21,7 @@ class ProductionController extends Controller
         
         // Get pagination parameters
         $page = intval($_GET['page'] ?? 1);
-        $perPage = 50; // Show more items on production dashboard
+        $perPage = SettingsService::getProductionPageSize(); // Show more items on production dashboard
         $search = trim($_GET['search'] ?? '');
         
         // Get paginated production items using efficient SQL pagination
@@ -213,6 +214,7 @@ class ProductionController extends Controller
             'orders' => $ordersData,
             'activeTab' => $tab,
             'currentSort' => $sort,
+            'refreshInterval' => SettingsService::getSupplierTrackingRefreshInterval(),
             'csrf_token' => $this->csrf()
         ]);
     }

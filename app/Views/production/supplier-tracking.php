@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // If we're updating something, try again in 5 seconds
                 scheduleRefresh();
             }
-        }, 30000);
+        }, <?= $refreshInterval ?>);
     }
     
     // Start auto-refresh

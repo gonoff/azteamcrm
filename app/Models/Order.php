@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Core\Model;
+use App\Services\SettingsService;
 
 class Order extends Model
 {
@@ -203,10 +204,11 @@ class Order extends Model
     
     public function calculateConnecticutTax()
     {
-        // Calculate Connecticut tax at 6.35% if enabled
+        // Calculate Connecticut tax if enabled
         if ($this->apply_ct_tax) {
             $subtotal = $this->getSubtotal();
-            return round($subtotal * 0.0635, 2);
+            $taxRate = SettingsService::getCtTaxRate();
+            return round($subtotal * $taxRate, 2);
         }
         return 0.00;
     }
@@ -291,8 +293,13 @@ class Order extends Model
         return 0;
     }
     
-    public function getUrgentOrders($limit = 10)
+    public function getUrgentOrders($limit = null)
     {
+        // Use default urgent orders limit if not specified
+        if ($limit === null) {
+            $limit = \App\Services\SettingsService::getUrgentOrdersLimit();
+        }
+        
         $sql = "SELECT o.*, c.full_name, c.company_name 
                 FROM {$this->table} o
                 JOIN customers c ON o.customer_id = c.customer_id
@@ -310,10 +317,11 @@ class Order extends Model
     
     public function countRushOrders()
     {
-        // Count orders due within 7 days that aren't paid yet
+        // Count orders due within configured rush threshold that aren't paid yet
+        $rushThreshold = SettingsService::getRushOrderThreshold();
         $sql = "SELECT COUNT(*) as count 
                 FROM {$this->table} 
-                WHERE date_due <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) 
+                WHERE date_due <= DATE_ADD(CURDATE(), INTERVAL {$rushThreshold} DAY) 
                 AND date_due >= CURDATE()
                 AND payment_status != 'paid' 
                 AND order_status != 'cancelled'";
@@ -357,8 +365,13 @@ class Order extends Model
         return 0;
     }
     
-    public function getRecentActiveOrders($limit = 10)
+    public function getRecentActiveOrders($limit = null)
     {
+        // Use default recent orders limit if not specified
+        if ($limit === null) {
+            $limit = \App\Services\SettingsService::getDashboardRecentOrdersLimit();
+        }
+        
         // Get recent orders excluding cancelled ones
         $sql = "SELECT * FROM {$this->table} 
                 WHERE order_status != 'cancelled' 
@@ -380,15 +393,17 @@ class Order extends Model
     public function isDueSoon()
     {
         $dueDate = strtotime($this->date_due);
-        $threeDaysFromNow = strtotime('+3 days');
-        return $dueDate <= $threeDaysFromNow && $dueDate >= strtotime('today');
+        $dueSoonThreshold = SettingsService::getDueSoonThreshold();
+        $thresholdTime = strtotime("+{$dueSoonThreshold} days");
+        return $dueDate <= $thresholdTime && $dueDate >= strtotime('today');
     }
     
     public function isRushOrder()
     {
         $dueDate = strtotime($this->date_due);
-        $sevenDaysFromNow = strtotime('+7 days');
-        return $dueDate <= $sevenDaysFromNow;
+        $rushThreshold = SettingsService::getRushOrderThreshold();
+        $rushTime = strtotime("+{$rushThreshold} days");
+        return $dueDate <= $rushTime;
     }
     
     public function getStatusBadge()
