@@ -2,6 +2,7 @@
 
 namespace App\Core;
 
+use Exception;
 use PDO;
 use PDOException;
 

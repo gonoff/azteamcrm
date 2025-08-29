@@ -2,6 +2,26 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     
+    // Helper function to preserve customer selection during form operations
+    function preserveCustomerSelection(operation) {
+        const customerIdInput = document.getElementById('customer_id');
+        const selectedCustomerDiv = document.getElementById('selected_customer');
+        const savedCustomerId = customerIdInput ? customerIdInput.value : null;
+        const savedCustomerHtml = selectedCustomerDiv ? selectedCustomerDiv.innerHTML : null;
+        
+        const result = operation();
+        
+        // Restore customer selection if it was cleared
+        if (savedCustomerId && customerIdInput && customerIdInput.value !== savedCustomerId) {
+            customerIdInput.value = savedCustomerId;
+        }
+        if (savedCustomerHtml && selectedCustomerDiv && selectedCustomerDiv.innerHTML !== savedCustomerHtml) {
+            selectedCustomerDiv.innerHTML = savedCustomerHtml;
+        }
+        
+        return result;
+    }
+    
     // Highlight active navigation item
     const currentPath = window.location.pathname;
     const navLinks = document.querySelectorAll('.sidebar .nav-link');
@@ -96,25 +116,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         form.addEventListener('submit', function(event) {
-            // Save customer selection before validation (for non-order forms)
-            const customerIdInput = document.getElementById('customer_id');
-            const selectedCustomerDiv = document.getElementById('selected_customer');
-            const savedCustomerId = customerIdInput ? customerIdInput.value : null;
-            const savedCustomerHtml = selectedCustomerDiv ? selectedCustomerDiv.innerHTML : null;
-            
-            if (!form.checkValidity()) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            form.classList.add('was-validated');
-            
-            // Restore customer selection after validation
-            if (savedCustomerId && customerIdInput) {
-                customerIdInput.value = savedCustomerId;
-            }
-            if (savedCustomerHtml && selectedCustomerDiv) {
-                selectedCustomerDiv.innerHTML = savedCustomerHtml;
-            }
+            preserveCustomerSelection(() => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            });
         });
     });
     
@@ -124,27 +132,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (dueDateInput) {
         dueDateInput.addEventListener('change', function() {
-            // Preserve customer selection during validation
-            const customerIdInput = document.getElementById('customer_id');
-            const selectedCustomerDiv = document.getElementById('selected_customer');
-            const savedCustomerId = customerIdInput ? customerIdInput.value : null;
-            const savedCustomerHtml = selectedCustomerDiv ? selectedCustomerDiv.innerHTML : null;
-            
-            if (receivedDateInput && this.value && receivedDateInput.value) {
-                if (new Date(this.value) < new Date(receivedDateInput.value)) {
-                    this.setCustomValidity('Due date must be after received date');
-                } else {
-                    this.setCustomValidity('');
+            preserveCustomerSelection(() => {
+                if (receivedDateInput && this.value && receivedDateInput.value) {
+                    if (new Date(this.value) < new Date(receivedDateInput.value)) {
+                        this.setCustomValidity('Due date must be after received date');
+                    } else {
+                        this.setCustomValidity('');
+                    }
                 }
-            }
-            
-            // Restore customer selection if it was cleared
-            if (savedCustomerId && customerIdInput && customerIdInput.value !== savedCustomerId) {
-                customerIdInput.value = savedCustomerId;
-            }
-            if (savedCustomerHtml && selectedCustomerDiv && selectedCustomerDiv.innerHTML !== savedCustomerHtml) {
-                selectedCustomerDiv.innerHTML = savedCustomerHtml;
-            }
+            });
         });
     }
     
@@ -168,7 +164,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const rows = document.querySelectorAll('.searchable-table tbody tr');
                 rows.forEach(row => {
                     const text = row.textContent.toLowerCase();
-                    row.style.display = text.includes(query) ? '' : 'none';
+                    if (text.includes(query)) {
+                        row.classList.remove('d-none');
+                    } else {
+                        row.classList.add('d-none');
+                    }
                 });
             }, 300);
         });

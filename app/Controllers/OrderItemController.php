@@ -364,11 +364,18 @@ class OrderItemController extends Controller
         $this->requireAuth();
         $this->verifyCsrf();
         
+        if (!$this->isPost()) {
+            $this->redirect('/orders');
+            return;
+        }
+        
         $orderItem = new OrderItem();
         $itemData = $orderItem->find($id);
         
         if (!$itemData) {
+            $_SESSION['error'] = 'Order item not found.';
             $this->redirect('/orders');
+            return;
         }
         
         $order_id = $itemData->order_id;
