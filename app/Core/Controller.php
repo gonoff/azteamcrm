@@ -37,6 +37,24 @@ class Controller
         header("Location: {$url}");
         exit;
     }
+
+    protected function isInternalUrl($url)
+    {
+        if (!is_string($url)) {
+            return false;
+        }
+
+        if (strpos($url, '/') !== 0) {
+            return false;
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return false;
+        }
+
+        return empty($parts['scheme']) && empty($parts['host']);
+    }
     
     protected function json($data, $statusCode = 200)
     {

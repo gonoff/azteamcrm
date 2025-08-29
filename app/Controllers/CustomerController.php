@@ -186,20 +186,20 @@ class CustomerController extends Controller
         if ($newCustomer) {
             // Check if there's a return URL
             $returnUrl = $_POST['return_url'] ?? null;
-            if ($returnUrl) {
+            if ($returnUrl && $this->isInternalUrl($returnUrl)) {
                 // If returning to order creation, add customer ID to URL
                 if (strpos($returnUrl, '/orders/create') !== false) {
                     // Add customer ID as URL parameter
                     $separator = strpos($returnUrl, '?') !== false ? '&' : '?';
                     $returnUrl .= $separator . 'customer_id=' . $newCustomer->customer_id;
                 }
-                $this->redirect($returnUrl);
             } else {
-                $this->redirect('/customers');
+                $returnUrl = '/customers';
             }
+            $this->redirect($returnUrl);
         } else {
             $_SESSION['old'] = $data;
-            
+
             // Preserve return URL on error
             $returnUrl = $_POST['return_url'] ?? null;
             $redirectUrl = '/customers/create';
