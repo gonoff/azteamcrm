@@ -137,7 +137,7 @@
                 foreach ($orderItems as $item) {
                     if ($item->order_item_status === 'completed') {
                         $completedItems++;
-                    } elseif ($item->order_item_status === 'in_production') {
+                    } elseif (in_array($item->order_item_status, ['artwork_sent_for_approval', 'artwork_approved', 'nesting_digitalization_done'])) {
                         $inProductionItems++;
                     } elseif ($item->order_item_status === 'pending') {
                         $pendingItems++;
@@ -304,7 +304,9 @@
                                             </button>
                                             <ul class="dropdown-menu">
                                                 <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="pending">Pending</a></li>
-                                                <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="in_production">In Production</a></li>
+                                                <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="artwork_sent_for_approval">Artwork Sent for Approval</a></li>
+                                                <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="artwork_approved">Artwork Approved</a></li>
+                                                <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="nesting_digitalization_done">Nesting/Digitalization Done</a></li>
                                                 <li><a class="dropdown-item update-item-status" href="#" data-id="<?= $item->order_item_id ?>" data-status="completed">Completed</a></li>
                                             </ul>
                                         </div>
@@ -603,7 +605,9 @@
                             <label for="edit_order_item_status" class="form-label">Item Status</label>
                             <select class="form-select" id="edit_order_item_status" name="order_item_status">
                                 <option value="pending">Pending</option>
-                                <option value="in_production">In Production</option>
+                                <option value="artwork_sent_for_approval">Artwork Sent for Approval</option>
+                                <option value="artwork_approved">Artwork Approved</option>
+                                <option value="nesting_digitalization_done">Nesting/Digitalization Done</option>
                                 <option value="completed">Completed</option>
                             </select>
                         </div>
@@ -754,7 +758,9 @@
                             <label for="create_order_item_status" class="form-label">Item Status</label>
                             <select class="form-select" id="create_order_item_status" name="order_item_status">
                                 <option value="pending" selected>Pending</option>
-                                <option value="in_production">In Production</option>
+                                <option value="artwork_sent_for_approval">Artwork Sent for Approval</option>
+                                <option value="artwork_approved">Artwork Approved</option>
+                                <option value="nesting_digitalization_done">Nesting/Digitalization Done</option>
                                 <option value="completed">Completed</option>
                             </select>
                         </div>

@@ -197,7 +197,9 @@
                         <?php
                         $itemStatuses = [
                             'pending' => 'Pending',
-                            'in_production' => 'In Production',
+                            'artwork_sent_for_approval' => 'Artwork Sent for Approval',
+                            'artwork_approved' => 'Artwork Approved',
+                            'nesting_digitalization_done' => 'Nesting/Digitalization Done',
                             'completed' => 'Completed'
                         ];
                         foreach ($itemStatuses as $value => $label):

@@ -76,9 +76,9 @@
                                 <button class="btn btn-sm btn-primary quick-start" data-id="<?= $item->order_item_id ?>">
                                     <i class="bi bi-play-fill"></i> Start
                                 </button>
-                                <?php elseif ($item->order_item_status === 'in_production'): ?>
+                                <?php elseif (in_array($item->order_item_status, ['artwork_sent_for_approval', 'artwork_approved', 'nesting_digitalization_done'])): ?>
                                 <button class="btn btn-sm btn-success quick-complete" data-id="<?= $item->order_item_id ?>">
-                                    <i class="bi bi-check"></i> Complete
+                                    <i class="bi bi-arrow-right"></i> Advance
                                 </button>
                                 <?php endif; ?>
                             </td>
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Quick start production
     document.querySelectorAll('.quick-start').forEach(button => {
         button.addEventListener('click', function() {
-            updateItemStatus(this.dataset.id, 'in_production', this);
+            updateItemStatus(this.dataset.id, 'artwork_sent_for_approval', this);
         });
     });
     

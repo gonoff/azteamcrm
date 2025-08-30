@@ -425,6 +425,35 @@ class OrderItemController extends Controller
             return;
         }
         
+        // Validate status values
+        if ($statusType === 'order_item_status') {
+            $validStatuses = [
+                'pending', 
+                'artwork_sent_for_approval', 
+                'artwork_approved', 
+                'nesting_digitalization_done', 
+                'completed'
+            ];
+            if (!in_array($newStatus, $validStatuses)) {
+                $this->json(['success' => false, 'message' => 'Invalid order item status']);
+                return;
+            }
+        } elseif ($statusType === 'supplier_status') {
+            $validSupplierStatuses = [
+                'awaiting_order', 
+                'order_made', 
+                'order_arrived', 
+                'order_delivered'
+            ];
+            if (!in_array($newStatus, $validSupplierStatuses)) {
+                $this->json(['success' => false, 'message' => 'Invalid supplier status']);
+                return;
+            }
+        } else {
+            $this->json(['success' => false, 'message' => 'Invalid status type']);
+            return;
+        }
+        
         $success = false;
         
         if ($statusType === 'order_item_status') {
@@ -481,6 +510,21 @@ class OrderItemController extends Controller
         if (!in_array($field, $allowedFields)) {
             $this->json(['success' => false, 'message' => 'Field not editable']);
             return;
+        }
+        
+        // Validate status values for order_item_status field
+        if ($field === 'order_item_status') {
+            $validStatuses = [
+                'pending', 
+                'artwork_sent_for_approval', 
+                'artwork_approved', 
+                'nesting_digitalization_done', 
+                'completed'
+            ];
+            if (!in_array($value, $validStatuses)) {
+                $this->json(['success' => false, 'message' => 'Invalid status value']);
+                return;
+            }
         }
         
         // Update the field

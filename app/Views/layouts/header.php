@@ -61,6 +61,13 @@
                                 <i class="bi bi-gear"></i> <span class="nav-text">Production</span>
                             </a>
                         </li>
+                        <?php if ($_SESSION['user_role'] === 'production_team' || $_SESSION['user_role'] === 'administrator'): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/azteamcrm/workspace" data-bs-toggle="tooltip" data-bs-placement="right" title="My Workspace">
+                                <i class="bi bi-kanban"></i> <span class="nav-text">My Workspace</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/production/supplier-tracking" data-bs-toggle="tooltip" data-bs-placement="right" title="Supplier Tracking">
                                 <i class="bi bi-truck"></i> <span class="nav-text">Supplier Tracking</span>

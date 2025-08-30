@@ -93,8 +93,18 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="#" data-filter="in_production">
-            In Production <span class="badge badge-info"><?= $stats['in_production'] ?></span>
+        <a class="nav-link" href="#" data-filter="artwork_sent_for_approval">
+            Artwork Sent <span class="badge badge-primary"><?= $stats['artwork_sent_count'] ?></span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#" data-filter="artwork_approved">
+            Artwork Approved <span class="badge badge-info"><?= $stats['artwork_approved_count'] ?></span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#" data-filter="nesting_digitalization_done">
+            Nesting Done <span class="badge badge-purple"><?= $stats['nesting_done_count'] ?></span>
         </a>
     </li>
     <li class="nav-item">
@@ -121,8 +131,8 @@
             <strong><span id="selectedCount">0</span> items selected</strong>
         </div>
         <div>
-            <button class="btn btn-sm btn-primary" onclick="bulkUpdateStatus('in_production')">
-                <i class="bi bi-play-fill"></i> Mark In Production
+            <button class="btn btn-sm btn-primary" onclick="bulkUpdateStatus('artwork_sent_for_approval')">
+                <i class="bi bi-play-fill"></i> Start Production
             </button>
             <button class="btn btn-sm btn-success" onclick="bulkUpdateStatus('completed')">
                 <i class="bi bi-check-circle"></i> Mark Completed
@@ -251,8 +261,18 @@
                                         </a></li>
                                         <li><a class="dropdown-item update-item-status" href="#" 
                                                data-id="<?= $item->order_item_id ?>" 
-                                               data-status="in_production">
-                                            <span class="badge badge-info">In Production</span>
+                                               data-status="artwork_sent_for_approval">
+                                            <span class="badge badge-primary">Artwork Sent</span>
+                                        </a></li>
+                                        <li><a class="dropdown-item update-item-status" href="#" 
+                                               data-id="<?= $item->order_item_id ?>" 
+                                               data-status="artwork_approved">
+                                            <span class="badge badge-info">Artwork Approved</span>
+                                        </a></li>
+                                        <li><a class="dropdown-item update-item-status" href="#" 
+                                               data-id="<?= $item->order_item_id ?>" 
+                                               data-status="nesting_digitalization_done">
+                                            <span class="badge badge-purple">Nesting Done</span>
                                         </a></li>
                                         <li><a class="dropdown-item update-item-status" href="#" 
                                                data-id="<?= $item->order_item_id ?>" 
@@ -329,13 +349,15 @@ document.addEventListener('DOMContentLoaded', function() {
             rows.forEach(row => {
                 if (filter === 'all') {
                     row.classList.remove('d-none');
-                } else if (filter === 'pending' || filter === 'in_production') {
+                } else if (['pending', 'artwork_sent_for_approval', 'artwork_approved', 'nesting_digitalization_done'].includes(filter)) {
+                    // Show items matching the specific status
                     if (row.dataset.status === filter) {
                         row.classList.remove('d-none');
                     } else {
                         row.classList.add('d-none');
                     }
                 } else {
+                    // Handle urgency-based filters (overdue, due_today, rush)
                     if (row.dataset.urgency === filter) {
                         row.classList.remove('d-none');
                     } else {
@@ -505,7 +527,7 @@ function bulkUpdateStatus(status) {
     }
     
     // Validate status parameter
-    const validStatuses = ['pending', 'in_production', 'completed'];
+    const validStatuses = ['pending', 'artwork_sent_for_approval', 'artwork_approved', 'nesting_digitalization_done', 'completed'];
     if (!status || !validStatuses.includes(status)) {
         showAlert('danger', 'Invalid status selected. Please try again.');
         return;
@@ -552,8 +574,34 @@ function bulkUpdateStatus(status) {
                         const statusBadge = row.querySelector('.status-badge');
                         if (statusBadge) {
                             // Update badge appearance based on new status
-                            const badgeClass = status === 'in_production' ? 'badge-info' : 'badge-warning';
-                            const badgeText = status.replace('_', ' ').toUpperCase();
+                            let badgeClass = 'badge-secondary';
+                            let badgeText = '';
+                            
+                            switch(status) {
+                                case 'pending':
+                                    badgeClass = 'badge-warning';
+                                    badgeText = 'PENDING';
+                                    break;
+                                case 'artwork_sent_for_approval':
+                                    badgeClass = 'badge-primary';
+                                    badgeText = 'ARTWORK SENT';
+                                    break;
+                                case 'artwork_approved':
+                                    badgeClass = 'badge-info';
+                                    badgeText = 'ARTWORK APPROVED';
+                                    break;
+                                case 'nesting_digitalization_done':
+                                    badgeClass = 'badge-purple';
+                                    badgeText = 'NESTING DONE';
+                                    break;
+                                case 'completed':
+                                    badgeClass = 'badge-success';
+                                    badgeText = 'COMPLETED';
+                                    break;
+                                default:
+                                    badgeText = status.replace(/_/g, ' ').toUpperCase();
+                            }
+                            
                             statusBadge.innerHTML = `<span class="badge ${badgeClass}">${badgeText}</span>`;
                         }
                     }

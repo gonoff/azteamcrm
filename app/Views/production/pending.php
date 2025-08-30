@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `csrf_token=<?= $csrf_token ?>&status_type=order_item_status&status=in_production`
+                body: `csrf_token=<?= $csrf_token ?>&status_type=order_item_status&status=artwork_sent_for_approval`
             })
             .then(response => response.json())
             .then(data => {

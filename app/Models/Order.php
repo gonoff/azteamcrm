@@ -92,9 +92,16 @@ class Order extends Model
             
             if ($item->order_item_status !== 'completed' && $item->order_item_status !== 'cancelled') {
                 $allCompleted = false;
-                if ($item->order_item_status === 'in_production') {
+                
+                // Check if any item is in production workflow stages
+                if (in_array($item->order_item_status, [
+                    'artwork_sent_for_approval',
+                    'artwork_approved', 
+                    'nesting_digitalization_done'
+                ])) {
                     $anyInProduction = true;
                 }
+                
             }
         }
         
@@ -104,7 +111,7 @@ class Order extends Model
         } elseif ($allCompleted) {
             $newStatus = 'completed';
         } elseif ($anyInProduction) {
-            $newStatus = 'in_production';
+            $newStatus = 'processing';
         } else {
             $newStatus = 'pending';
         }
@@ -297,7 +304,7 @@ class Order extends Model
     {
         // Use default urgent orders limit if not specified
         if ($limit === null) {
-            $limit = \App\Services\SettingsService::getUrgentOrdersLimit();
+            $limit = \App\Services\SettingsService::getDashboardUrgentOrdersLimit();
         }
         
         $sql = "SELECT o.*, c.full_name, c.company_name 
@@ -433,7 +440,7 @@ class Order extends Model
     {
         $badges = [
             'pending' => '<span class="badge bg-warning text-dark">Pending</span>',
-            'in_production' => '<span class="badge bg-info text-dark">In Production</span>',
+            'processing' => '<span class="badge bg-info text-dark">Processing</span>',
             'completed' => '<span class="badge bg-success">Completed</span>',
             'cancelled' => '<span class="badge bg-secondary">Cancelled</span>'
         ];

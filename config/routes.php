@@ -67,6 +67,11 @@ return [
     '/production/bulk-update' => 'ProductionController@updateBulkStatus',
     '/production/update-material-prepared' => 'ProductionController@updateMaterialPrepared',
     
+    // Personal Workspace (Production Team)
+    '/workspace' => 'WorkspaceController@index',
+    '/workspace/tab-data/{tab}' => 'WorkspaceController@getTabData',
+    '/workspace/advance/{id}' => 'WorkspaceController@advanceItem',
+    
     // Settings Management (Admin only)
     '/settings' => 'SettingsController@index',
     '/settings/update' => 'SettingsController@update',

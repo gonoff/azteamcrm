@@ -12,7 +12,8 @@ class OrderItem extends Model
         'order_item_status', 'order_id', 'user_id', 'quantity',
         'unit_price', 'product_type', 'product_description',
         'product_size', 'custom_method', 'custom_area',
-        'supplier_status', 'material_prepared', 'note_item'
+        'supplier_status', 'material_prepared', 'note_item',
+        'claimed_by', 'claimed_at', 'completed_by', 'completed_at'
     ];
     
     public function getOrder()
@@ -60,7 +61,7 @@ class OrderItem extends Model
         // Only count items actually in production, not pending ones
         $sql = "SELECT COUNT(*) as count FROM {$this->table} oi
                 JOIN orders o ON oi.order_id = o.order_id
-                WHERE oi.order_item_status = 'in_production' 
+                WHERE oi.order_item_status IN ('artwork_sent_for_approval', 'artwork_approved', 'nesting_digitalization_done')
                 AND o.order_status != 'cancelled'";
         $stmt = $this->db->query($sql);
         
@@ -88,18 +89,102 @@ class OrderItem extends Model
         return [];
     }
     
+    /**
+     * Status constants for 5-stage workflow
+     */
+    const STATUS_PENDING = 'pending';
+    const STATUS_ARTWORK_SENT = 'artwork_sent_for_approval';
+    const STATUS_ARTWORK_APPROVED = 'artwork_approved';
+    const STATUS_NESTING_DONE = 'nesting_digitalization_done';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_CANCELLED = 'cancelled'; // Legacy
+    const STATUS_ON_HOLD = 'on_hold'; // Legacy
+    
+    /**
+     * Get all valid status values
+     */
+    public static function getValidStatuses()
+    {
+        return [
+            self::STATUS_PENDING,
+            self::STATUS_ARTWORK_SENT,
+            self::STATUS_ARTWORK_APPROVED,
+            self::STATUS_NESTING_DONE,
+            self::STATUS_COMPLETED,
+            self::STATUS_CANCELLED,
+            self::STATUS_ON_HOLD
+        ];
+    }
+    
+    /**
+     * Get status labels for display
+     */
+    public static function getStatusLabels()
+    {
+        return [
+            self::STATUS_PENDING => 'Pending',
+            self::STATUS_ARTWORK_SENT => 'Artwork Sent for Approval',
+            self::STATUS_ARTWORK_APPROVED => 'Artwork Approved',
+            self::STATUS_NESTING_DONE => 'Nesting/Digitalization Done',
+            self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_CANCELLED => 'Cancelled',
+            self::STATUS_ON_HOLD => 'On Hold'
+        ];
+    }
+    
+    /**
+     * Get status progression sequence
+     */
+    public static function getStatusProgression()
+    {
+        return [
+            self::STATUS_PENDING,
+            self::STATUS_ARTWORK_SENT,
+            self::STATUS_ARTWORK_APPROVED,
+            self::STATUS_NESTING_DONE,
+            self::STATUS_COMPLETED
+        ];
+    }
+    
+    /**
+     * Check if status can be progressed to next stage
+     */
+    public function canAdvanceStatus()
+    {
+        $progression = self::getStatusProgression();
+        $currentIndex = array_search($this->order_item_status, $progression);
+        return $currentIndex !== false && $currentIndex < count($progression) - 1;
+    }
+    
+    /**
+     * Get next status in progression
+     */
+    public function getNextStatus()
+    {
+        $progression = self::getStatusProgression();
+        $currentIndex = array_search($this->order_item_status, $progression);
+        
+        if ($currentIndex !== false && $currentIndex < count($progression) - 1) {
+            return $progression[$currentIndex + 1];
+        }
+        
+        return null;
+    }
+    
     public function getStatusBadge()
     {
-        // Item status is now limited to: pending, in_production, completed
-        // 'cancelled' is kept for legacy data but not available in forms
+        // Enhanced 5-stage workflow status badges
         $badges = [
-            'pending' => '<span class="badge bg-warning text-dark">Pending</span>',
-            'in_production' => '<span class="badge bg-info text-dark">In Production</span>',
-            'completed' => '<span class="badge bg-success">Completed</span>',
-            'cancelled' => '<span class="badge bg-secondary">Cancelled</span>' // Legacy support
+            self::STATUS_PENDING => '<span class="badge bg-warning text-dark">Pending</span>',
+            self::STATUS_ARTWORK_SENT => '<span class="badge bg-primary">Artwork Sent</span>',
+            self::STATUS_ARTWORK_APPROVED => '<span class="badge bg-info">Artwork Approved</span>',
+            self::STATUS_NESTING_DONE => '<span class="badge bg-purple">Nesting/Digitalization</span>',
+            self::STATUS_COMPLETED => '<span class="badge bg-success">Completed</span>',
+            self::STATUS_CANCELLED => '<span class="badge bg-secondary">Cancelled</span>',
+            self::STATUS_ON_HOLD => '<span class="badge bg-secondary">On Hold</span>'
         ];
         
-        return $badges[$this->order_item_status] ?? '<span class="badge bg-secondary">' . ucfirst($this->order_item_status) . '</span>';
+        return $badges[$this->order_item_status] ?? '<span class="badge bg-secondary">' . ucfirst(str_replace('_', ' ', $this->order_item_status)) . '</span>';
     }
     
     public function getSupplierStatusBadge()
@@ -394,11 +479,12 @@ class OrderItem extends Model
         // Add search conditions
         if (!empty($searchTerm) && !empty($searchFields)) {
             $searchConditions = [];
-            foreach ($searchFields as $field) {
-                $searchConditions[] = "oi.{$field} LIKE :search";
+            foreach ($searchFields as $i => $field) {
+                $searchParam = "search_" . $i;
+                $searchConditions[] = "oi.{$field} LIKE :{$searchParam}";
+                $params[$searchParam] = '%' . $searchTerm . '%';
             }
             $whereClause .= " AND (" . implode(' OR ', $searchConditions) . ")";
-            $params['search'] = '%' . $searchTerm . '%';
         }
         
         // Count total items
@@ -472,10 +558,14 @@ class OrderItem extends Model
     public function getProductionStatistics()
     {
         // Get comprehensive production statistics
+        // NOTE: For consistency with dashboard, pending count represents ORDERS with pending status
         $sql = "SELECT 
-                    COUNT(*) as total_active,
+                    COUNT(*) as total_active_items,
                     SUM(CASE WHEN oi.order_item_status = 'pending' THEN 1 ELSE 0 END) as total_pending,
-                    SUM(CASE WHEN oi.order_item_status = 'in_production' THEN 1 ELSE 0 END) as in_production,
+                    SUM(CASE WHEN oi.order_item_status = 'artwork_sent_for_approval' THEN 1 ELSE 0 END) as artwork_sent_count,
+                    SUM(CASE WHEN oi.order_item_status = 'artwork_approved' THEN 1 ELSE 0 END) as artwork_approved_count,
+                    SUM(CASE WHEN oi.order_item_status = 'nesting_digitalization_done' THEN 1 ELSE 0 END) as nesting_done_count,
+                    SUM(CASE WHEN oi.order_item_status IN ('artwork_sent_for_approval', 'artwork_approved', 'nesting_digitalization_done') THEN 1 ELSE 0 END) as in_production,
                     SUM(CASE WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) 
                                  AND o.date_due > DATE_ADD(CURDATE(), INTERVAL 3 DAY)
                                  AND o.date_due > CURDATE()
@@ -493,6 +583,9 @@ class OrderItem extends Model
             $result = $stmt->fetch(\PDO::FETCH_ASSOC);
             return [
                 'total_pending' => (int)($result['total_pending'] ?? 0),
+                'artwork_sent_count' => (int)($result['artwork_sent_count'] ?? 0),
+                'artwork_approved_count' => (int)($result['artwork_approved_count'] ?? 0),
+                'nesting_done_count' => (int)($result['nesting_done_count'] ?? 0),
                 'in_production' => (int)($result['in_production'] ?? 0),
                 'completed_today' => $this->getCompletedTodayCount(), // Now works with completion tracking
                 'rush_items' => (int)($result['rush_items'] ?? 0),
@@ -503,6 +596,9 @@ class OrderItem extends Model
         
         return [
             'total_pending' => 0,
+            'artwork_sent_count' => 0,
+            'artwork_approved_count' => 0,
+            'nesting_done_count' => 0,
             'in_production' => 0,
             'completed_today' => 0,
             'rush_items' => 0,
@@ -742,4 +838,128 @@ class OrderItem extends Model
         }
         return [];
     }
+    
+    // Personal Workspace System Methods
+    
+    
+    /**
+     * Advance an order item to the next status in the workflow
+     */
+    public function advanceStatus($userId)
+    {
+        // Check if status can be advanced
+        if (!$this->canAdvanceStatus()) {
+            return false;
+        }
+        
+        $nextStatus = $this->getNextStatus();
+        if (!$nextStatus) {
+            return false;
+        }
+        
+        // Update status
+        $this->attributes['order_item_status'] = $nextStatus;
+        $this->order_item_status = $nextStatus;
+        
+        // Set completion fields if reaching completed status
+        if ($nextStatus === self::STATUS_COMPLETED) {
+            $completedAt = date('Y-m-d H:i:s');
+            $this->attributes['completed_by'] = $userId;
+            $this->attributes['completed_at'] = $completedAt;
+            $this->completed_by = $userId;
+            $this->completed_at = $completedAt;
+        }
+        
+        return $this->update();
+    }
+    
+    
+    /**
+     * Get items by status for kanban workspace tabs
+     */
+    public function getItemsByStatus($status, $userId = null, $forCompleted = false)
+    {
+        $baseQuery = "SELECT oi.*, o.date_due, o.order_status, c.full_name as customer_name, c.company_name,
+                          c.phone_number, o.payment_status,
+                          CASE 
+                              WHEN o.date_due < CURDATE() THEN 'overdue'
+                              WHEN o.date_due = CURDATE() THEN 'due_today'
+                              WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 3 DAY) THEN 'due_soon'
+                              WHEN o.date_due <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 'rush'
+                              ELSE 'normal'
+                          END as urgency_level
+                      FROM {$this->table} oi
+                      JOIN orders o ON oi.order_id = o.order_id
+                      JOIN customers c ON o.customer_id = c.customer_id
+                      WHERE oi.order_item_status = :status
+                          AND o.order_status NOT IN ('cancelled', 'on_hold')";
+        
+        $params = ['status' => $status];
+        
+        if ($userId && $forCompleted) {
+            // For completed items - show items completed by specific user
+            $baseQuery .= " AND oi.completed_by = :user_id";
+            $params['user_id'] = $userId;
+            $orderBy = " ORDER BY oi.completed_at DESC";
+        } else {
+            // For all other statuses - show ALL items (no user filtering)
+            $orderBy = " ORDER BY FIELD(urgency_level, 'overdue', 'due_today', 'due_soon', 'rush', 'normal'), o.date_due ASC, oi.order_item_id ASC";
+        }
+        
+        $sql = $baseQuery . $orderBy;
+        $stmt = $this->db->query($sql, $params);
+        
+        if ($stmt) {
+            $results = $stmt->fetchAll(\PDO::FETCH_CLASS, static::class);
+            // Set additional properties from the JOIN
+            foreach ($results as $item) {
+                if (!isset($item->customer_name)) {
+                    $item->customer_name = $item->full_name ?? 'Unknown Customer';
+                }
+            }
+            return $results;
+        }
+        return [];
+    }
+    
+    /**
+     * Get all items at pending stage
+     */
+    public function getAllPendingItems()
+    {
+        return $this->getItemsByStatus(self::STATUS_PENDING);
+    }
+    
+    /**
+     * Get all items at artwork sent stage
+     */
+    public function getAllArtworkSent()
+    {
+        return $this->getItemsByStatus(self::STATUS_ARTWORK_SENT);
+    }
+    
+    /**
+     * Get all items at artwork approved stage
+     */
+    public function getAllArtworkApproved()
+    {
+        return $this->getItemsByStatus(self::STATUS_ARTWORK_APPROVED);
+    }
+    
+    /**
+     * Get all items at nesting/digitalization stage
+     */
+    public function getAllNestingDone()
+    {
+        return $this->getItemsByStatus(self::STATUS_NESTING_DONE);
+    }
+    
+    /**
+     * Get all order items completed by a specific user (for "My Completed" tab)
+     */
+    public function getUserCompleted($userId)
+    {
+        return $this->getItemsByStatus(self::STATUS_COMPLETED, $userId, true);
+    }
+    
 }

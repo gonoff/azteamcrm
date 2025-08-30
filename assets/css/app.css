@@ -56,6 +56,11 @@
   --info-light: #ECFEFF;        /* Info light bg */
   --info-text: #155E75;         /* Info dark text */
   
+  --purple: #9333EA;            /* Purple states (violet) */
+  --purple-hover: #7C3AED;      /* Purple hover */
+  --purple-light: #F3E8FF;      /* Purple light bg */
+  --purple-text: #581C87;       /* Purple dark text */
+  
   --pending: #6366F1;           /* Pending states (indigo) */
   --pending-hover: #4F46E5;     /* Pending hover */
   --pending-light: #EEF2FF;     /* Pending light bg */
@@ -606,6 +611,17 @@ main {
   color: var(--white);
 }
 
+/* Purple */
+.btn-purple {
+  background: linear-gradient(135deg, var(--purple) 0%, var(--purple-hover) 100%);
+  color: var(--white);
+}
+
+.btn-purple:hover {
+  background: linear-gradient(135deg, var(--purple-hover) 0%, #6D28D9 100%);
+  color: var(--white);
+}
+
 /* Outline Variants */
 .btn-outline-primary {
   background: transparent;
@@ -699,6 +715,13 @@ main {
   background-color: var(--info-light) !important;
   color: var(--info-text) !important;
   border-color: var(--info);
+}
+
+/* Purple States */
+.badge-purple, .bg-purple {
+  background-color: var(--purple-light) !important;
+  color: var(--purple-text) !important;
+  border-color: var(--purple);
 }
 
 /* Secondary States */
@@ -1679,3 +1702,274 @@ textarea:focus-visible {
 .form-control-readonly { background-color: var(--neutral-100); }
 .dropdown-scrollable { max-height: 300px; overflow-y: auto; }
 .alert-fixed-top { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; }
+
+/* =================================================================
+   PERSONAL WORKSPACE SYSTEM
+   ================================================================= */
+
+/* Workspace Tab Interface */
+.workspace-tabs .nav-link {
+  color: var(--neutral-600);
+  border: 1px solid transparent;
+  border-radius: 0.375rem 0.375rem 0 0;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+}
+
+.workspace-tabs .nav-link:hover {
+  color: var(--neutral-700);
+  background-color: var(--neutral-50);
+  border-color: var(--neutral-200);
+}
+
+.workspace-tabs .nav-link.active {
+  color: var(--primary);
+  background-color: var(--white);
+  border-color: var(--neutral-200) var(--neutral-200) var(--white);
+  border-bottom-color: transparent;
+}
+
+.workspace-tabs .nav-link .badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Workspace Item Cards */
+.workspace-item-card {
+  transition: all 0.2s ease;
+  border: 1px solid var(--neutral-200);
+  background: var(--white);
+  height: 100%;
+}
+
+.workspace-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--neutral-300);
+}
+
+.workspace-item-card.border-danger {
+  border-left: 4px solid var(--danger);
+  border-left-width: 4px;
+}
+
+.workspace-item-card.border-warning {
+  border-left: 4px solid var(--warning);
+  border-left-width: 4px;
+}
+
+.workspace-item-card.border-info {
+  border-left: 4px solid var(--info);
+  border-left-width: 4px;
+}
+
+.workspace-item-card .card-header {
+  background-color: var(--neutral-50);
+  border-bottom: 1px solid var(--neutral-200);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.workspace-item-card .card-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.workspace-item-card .card-title {
+  color: var(--neutral-700);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.workspace-item-card .card-footer {
+  background-color: var(--neutral-50);
+  border-top: 1px solid var(--neutral-200);
+  padding: 0.75rem 1rem;
+}
+
+/* Urgency Badges in Workspace */
+.workspace-item-card .badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.workspace-item-card .badge.bg-danger {
+  background-color: var(--danger) !important;
+  color: white;
+}
+
+.workspace-item-card .badge.bg-warning {
+  background-color: var(--warning) !important;
+  color: var(--warning-text);
+}
+
+.workspace-item-card .badge.bg-info {
+  background-color: var(--info) !important;
+  color: white;
+}
+
+.workspace-item-card .badge.bg-purple {
+  background-color: var(--purple) !important;
+  color: white;
+}
+
+/* Action Buttons in Workspace */
+.workspace-item-card .btn {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+}
+
+.workspace-item-card .claim-btn {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  width: 100%;
+}
+
+.workspace-item-card .claim-btn:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.workspace-item-card .complete-btn {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.workspace-item-card .complete-btn:hover {
+  background-color: var(--success-hover);
+  border-color: var(--success-hover);
+}
+
+.workspace-item-card .release-btn {
+  background-color: transparent;
+  border-color: var(--neutral-300);
+  color: var(--neutral-600);
+}
+
+.workspace-item-card .release-btn:hover {
+  background-color: var(--neutral-100);
+  border-color: var(--neutral-400);
+  color: var(--neutral-700);
+}
+
+/* Empty States */
+.workspace-empty-state {
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--neutral-500);
+}
+
+.workspace-empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.workspace-empty-state h4 {
+  color: var(--neutral-600);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.workspace-empty-state p {
+  color: var(--neutral-500);
+  margin-bottom: 0;
+}
+
+/* Loading States */
+.workspace-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 2rem;
+}
+
+.workspace-loading .spinner-border {
+  margin-bottom: 1rem;
+}
+
+.workspace-loading p {
+  color: var(--neutral-500);
+  margin-bottom: 0;
+}
+
+/* Alert Container */
+#alert-container {
+  max-width: 500px;
+  z-index: 1050;
+}
+
+#alert-container .alert {
+  margin-bottom: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: none;
+}
+
+#alert-container .alert-success {
+  background-color: var(--success-light);
+  color: var(--success-text);
+}
+
+#alert-container .alert-danger {
+  background-color: var(--danger-light);
+  color: var(--danger-text);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .workspace-item-card {
+    margin-bottom: 1rem;
+  }
+  
+  .workspace-tabs .nav-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .workspace-tabs .nav-link .badge {
+    font-size: 0.7rem;
+  }
+  
+  #alert-container {
+    left: 1rem;
+    right: 1rem;
+    transform: none;
+    max-width: none;
+  }
+}
+
+/* Accessibility Improvements */
+.workspace-item-card:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.workspace-tabs .nav-link:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+/* Animation for card updates */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workspace-item-card.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}

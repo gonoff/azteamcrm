@@ -158,7 +158,9 @@
                                                     data-status-type="order_item_status"
                                                     data-current-status="<?= $item->order_item_status ?>">
                                                 <option value="pending" <?= $item->order_item_status === 'pending' ? 'selected' : '' ?>>Pending</option>
-                                                <option value="in_production" <?= $item->order_item_status === 'in_production' ? 'selected' : '' ?>>In Production</option>
+                                                <option value="artwork_sent_for_approval" <?= $item->order_item_status === 'artwork_sent_for_approval' ? 'selected' : '' ?>>Artwork Sent</option>
+                                                <option value="artwork_approved" <?= $item->order_item_status === 'artwork_approved' ? 'selected' : '' ?>>Artwork Approved</option>
+                                                <option value="nesting_digitalization_done" <?= $item->order_item_status === 'nesting_digitalization_done' ? 'selected' : '' ?>>Nesting Done</option>
                                                 <option value="completed" <?= $item->order_item_status === 'completed' ? 'selected' : '' ?>>Completed</option>
                                             </select>
                                         <?php endif; ?>

@@ -32,7 +32,7 @@ class ProductionController extends Controller
                 ['product_type', 'product_description', 'note_item'],
                 $page,
                 $perPage,
-                ['order_item_status' => ['pending', 'in_production']], // Active items only
+                ['order_item_status' => ['pending', 'artwork_sent_for_approval', 'artwork_approved', 'nesting_digitalization_done']], // Active items only
                 'date_due ASC',
                 $allowedSortColumns
             );
