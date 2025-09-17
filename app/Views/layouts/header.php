@@ -29,65 +29,76 @@
                         </div>
                     </div>
                     <ul class="nav flex-column">
+                        <?php if (\App\Services\AccessControl::canAccess($_SESSION['user_role'], 'dashboard')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/dashboard" data-bs-toggle="tooltip" data-bs-placement="right" title="Dashboard">
                                 <i class="bi bi-speedometer2"></i> <span class="nav-text">Dashboard</span>
                             </a>
                         </li>
-                        <?php if ($_SESSION['user_role'] === 'administrator'): ?>
+                        <?php endif; ?>
+
+                        <?php if (\App\Services\AccessControl::canAccess($_SESSION['user_role'], 'users')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/users" data-bs-toggle="tooltip" data-bs-placement="right" title="Users">
                                 <i class="bi bi-people"></i> <span class="nav-text">Users</span>
                             </a>
                         </li>
                         <?php endif; ?>
+
+                        <?php if (\App\Services\AccessControl::canAccess($_SESSION['user_role'], 'profile')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/profile" data-bs-toggle="tooltip" data-bs-placement="right" title="My Profile">
                                 <i class="bi bi-person-circle"></i> <span class="nav-text">My Profile</span>
                             </a>
                         </li>
+                        <?php endif; ?>
+
+                        <?php if (\App\Services\AccessControl::canAccess($_SESSION['user_role'], 'customers')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/customers" data-bs-toggle="tooltip" data-bs-placement="right" title="Customers">
                                 <i class="bi bi-person-badge"></i> <span class="nav-text">Customers</span>
                             </a>
                         </li>
+                        <?php endif; ?>
+
+                        <?php if (\App\Services\AccessControl::canAccess($_SESSION['user_role'], 'orders')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/orders" data-bs-toggle="tooltip" data-bs-placement="right" title="Orders">
                                 <i class="bi bi-cart3"></i> <span class="nav-text">Orders</span>
                             </a>
                         </li>
+                        <?php endif; ?>
+
+                        <?php if (\App\Services\AccessControl::canAccess($_SESSION['user_role'], 'production')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/production" data-bs-toggle="tooltip" data-bs-placement="right" title="Production">
                                 <i class="bi bi-gear"></i> <span class="nav-text">Production</span>
                             </a>
                         </li>
-                        <?php if ($_SESSION['user_role'] === 'production_team' || $_SESSION['user_role'] === 'administrator'): ?>
+                        <?php endif; ?>
+
+                        <?php if (\App\Services\AccessControl::canAccess($_SESSION['user_role'], 'workspace')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/workspace" data-bs-toggle="tooltip" data-bs-placement="right" title="My Workspace">
                                 <i class="bi bi-kanban"></i> <span class="nav-text">My Workspace</span>
                             </a>
                         </li>
                         <?php endif; ?>
+
+                        <?php if (\App\Services\AccessControl::canAccess($_SESSION['user_role'], 'supplier_tracking')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/production/supplier-tracking" data-bs-toggle="tooltip" data-bs-placement="right" title="Supplier Tracking">
                                 <i class="bi bi-truck"></i> <span class="nav-text">Supplier Tracking</span>
                             </a>
                         </li>
-                        
-                        <!-- Administrator-only sections -->
-                        <?php if ($_SESSION['user_role'] === 'administrator'): ?>
+                        <?php endif; ?>
+
+                        <?php if (\App\Services\AccessControl::canAccess($_SESSION['user_role'], 'settings')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/azteamcrm/settings" data-bs-toggle="tooltip" data-bs-placement="right" title="System Settings">
                                 <i class="bi bi-gear"></i> <span class="nav-text">Settings</span>
                             </a>
                         </li>
-                        <?php /* Commented out - Controllers/Views not implemented yet
-                        <li class="nav-item">
-                            <a class="nav-link" href="/azteamcrm/reports" data-bs-toggle="tooltip" data-bs-placement="right" title="Reports">
-                                <i class="bi bi-graph-up"></i> <span class="nav-text">Reports</span>
-                            </a>
-                        </li>
-                        */ ?>
                         <?php endif; ?>
                         
                         <li class="nav-item mt-3">

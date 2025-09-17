@@ -62,7 +62,7 @@
                 <input type="hidden" name="category" value="<?= $currentCategory ?>">
                 
                 <?php foreach ($settings as $key => $setting): ?>
-                    <div class="mb-4 setting-item" data-setting-key="<?= $key ?>">
+                    <div class="mb-4 setting-item" data-setting-key="<?= $key ?>" data-setting-type="<?= htmlspecialchars($setting['type']) ?>">
                         <div class="row">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">
@@ -189,26 +189,36 @@ function saveSettings(event) {
     // Convert form data to settings object
     const settings = {};
     const settingItems = document.querySelectorAll('.setting-item');
-    
+
     settingItems.forEach(item => {
         const key = item.dataset.settingKey;
-        const input = item.querySelector('input, select, textarea');
-        
+        const type = item.dataset.settingType;
+        // Prefer a dedicated hidden input if present (used for complex widgets)
+        let input = item.querySelector('input[type="hidden"], textarea, select, input');
+
         if (input) {
-            let value = input.value;
-            
-            // Handle different input types
-            if (input.type === 'checkbox') {
+            let value;
+            if (type === 'json') {
+                // JSON settings allow complex values; expect hidden input to contain JSON or collect from checkboxes
+                const hidden = item.querySelector('input[type="hidden"]');
+                if (hidden && hidden.value) {
+                    try { value = JSON.parse(hidden.value); } catch (e) { value = hidden.value; }
+                } else {
+                    value = input.value;
+                    try { value = JSON.parse(value); } catch (e) {}
+                }
+            } else if (input.type === 'checkbox') {
                 value = input.checked;
             } else if (input.type === 'number') {
-                value = input.step && input.step.includes('.') ? parseFloat(value) : parseInt(value);
+                value = input.step && input.step.includes('.') ? parseFloat(input.value) : parseInt(input.value);
+            } else {
+                value = input.value;
             }
-            
             settings[key] = value;
         }
     });
-    
-    // Add settings to form data
+
+    // Add settings to form data (JSON payload for flexibility)
     formData.append('settings', JSON.stringify(settings));
     
     fetch('/azteamcrm/settings/update', {
@@ -250,11 +260,21 @@ function resetSetting(key) {
             
             // Update the input value in the UI
             const settingItem = document.querySelector(`[data-setting-key="${key}"]`);
+            const type = settingItem?.dataset?.settingType;
             const input = settingItem.querySelector('input, select, textarea');
-            
-            if (input) {
+            if (type === 'json') {
+                // If using access features widget, sync checkboxes; otherwise update textarea
+                const featureBoxes = settingItem.querySelectorAll('.feature-checkbox');
+                if (featureBoxes && featureBoxes.length) {
+                    const arr = Array.isArray(data.new_value) ? data.new_value : [];
+                    featureBoxes.forEach(cb => { cb.checked = arr.includes(cb.value); });
+                    updateAccessFeaturesHidden(settingItem);
+                } else if (input) {
+                    input.value = typeof data.new_value === 'string' ? data.new_value : JSON.stringify(data.new_value, null, 2);
+                }
+            } else if (input) {
                 if (input.type === 'checkbox') {
-                    input.checked = data.new_value;
+                    input.checked = !!data.new_value;
                 } else {
                     input.value = data.new_value;
                 }
@@ -345,6 +365,27 @@ function importSettings(event) {
     });
 }
 
+// Access features widget logic
+function updateAccessFeaturesHidden(container) {
+    const hidden = container.querySelector('input[type="hidden"]');
+    const checkboxes = container.querySelectorAll('input.feature-checkbox[type="checkbox"]');
+    const selected = [];
+    checkboxes.forEach(cb => { if (cb.checked) selected.push(cb.value); });
+    // Ensure profile remains at least present client-side for safety; server/enforcer also ensures it
+    if (!selected.includes('profile')) selected.push('profile');
+    if (hidden) hidden.value = JSON.stringify(selected);
+}
+
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.classList && e.target.classList.contains('feature-checkbox')) {
+        const container = e.target.closest('.setting-item');
+        if (container) {
+            updateAccessFeaturesHidden(container);
+            isFormDirty = true;
+        }
+    }
+});
+
 function clearCache() {
     if (!confirm('Are you sure you want to clear the settings cache?')) {
         return;
@@ -414,6 +455,25 @@ function renderSettingInput($key, $setting) {
     
     $inputId = 'setting_' . str_replace('.', '_', $key);
     $inputName = "settings[{$key}]";
+    
+    // Special UI for access role feature selection
+    if ($type === 'json' && strpos($key, 'access.roles.') === 0 && substr($key, -strlen('.allowed_features')) === '.allowed_features') {
+        $features = \App\Services\AccessControl::allFeatures();
+        $selected = is_array($value) ? $value : [];
+        $html = "<input type=\"hidden\" id=\"{$inputId}\" name=\"{$inputName}\" value='" . htmlspecialchars(json_encode($selected)) . "'>";
+        $html .= '<div class="row g-2">';
+        foreach ($features as $feature) {
+            $checked = in_array($feature, $selected) ? 'checked' : '';
+            $label = ucwords(str_replace('_', ' ', $feature));
+            $html .= "<div class=\"col-6 col-md-4\">".
+                     "<div class=\"form-check\">".
+                     "<input class=\"form-check-input feature-checkbox\" type=\"checkbox\" id=\"{$inputId}_{$feature}\" value=\"{$feature}\" {$checked}>".
+                     "<label class=\"form-check-label\" for=\"{$inputId}_{$feature}\">{$label}</label>".
+                     "</div></div>";
+        }
+        $html .= '</div>';
+        return $html;
+    }
     
     switch ($type) {
         case 'boolean':

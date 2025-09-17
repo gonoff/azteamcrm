@@ -11,6 +11,11 @@ use Exception;
 
 class OrderController extends Controller
 {
+    public function __construct()
+    {
+        $this->requireFeature('orders');
+    }
+
     public function index()
     {
         $this->requireAuth();

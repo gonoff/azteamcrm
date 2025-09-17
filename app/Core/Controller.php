@@ -81,6 +81,21 @@ class Controller
         return $_SERVER['REQUEST_METHOD'] === 'GET';
     }
     
+    protected function requireFeature($feature)
+    {
+        $this->requireAuth();
+        $role = $_SESSION['user_role'] ?? '';
+        if (!\App\Services\AccessControl::canAccess($role, $feature)) {
+            if ($this->isAjax()) {
+                $this->json(['success' => false, 'message' => 'Access denied'], 403);
+            } else {
+                $_SESSION['error'] = 'Access denied for your role.';
+                $target = \App\Services\AccessControl::defaultLandingRoute($role);
+                $this->redirect($target);
+            }
+        }
+    }
+
     protected function requireAuth()
     {
         if (session_status() === PHP_SESSION_NONE) {

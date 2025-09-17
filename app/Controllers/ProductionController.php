@@ -17,6 +17,7 @@ class ProductionController extends Controller
     
     public function index()
     {
+        $this->requireFeature('production');
         $orderItem = new OrderItem();
         
         // Get pagination parameters
@@ -66,6 +67,7 @@ class ProductionController extends Controller
     
     public function pending()
     {
+        $this->requireFeature('production');
         $orderItem = new OrderItem();
         
         // Get all pending items using model method
@@ -80,6 +82,7 @@ class ProductionController extends Controller
     
     public function today()
     {
+        $this->requireFeature('production');
         $orderItem = new OrderItem();
         
         // Get items for today's schedule using model method
@@ -94,6 +97,7 @@ class ProductionController extends Controller
     
     public function materials()
     {
+        $this->requireFeature('production');
         $orderItem = new OrderItem();
         
         // Get materials summary using model method
@@ -112,7 +116,7 @@ class ProductionController extends Controller
     
     public function updateBulkStatus()
     {
-        $this->requireAuth();
+        $this->requireFeature('production');
         $this->verifyCsrf();
         
         if (!$this->isPost()) {
@@ -193,6 +197,7 @@ class ProductionController extends Controller
     
     public function supplierTracking()
     {
+        $this->requireFeature('supplier_tracking');
         $tab = $_GET['tab'] ?? 'active'; // Default to active orders tab
         $sort = $_GET['sort'] ?? null; // Get sort parameter
         
@@ -223,6 +228,7 @@ class ProductionController extends Controller
     
     public function updateMaterialPrepared()
     {
+        $this->requireFeature('production');
         if (!$this->isPost()) {
             $this->json(['success' => false, 'message' => 'Invalid request method']);
             return;

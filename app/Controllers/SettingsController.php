@@ -19,6 +19,8 @@ class SettingsController extends Controller
      */
     public function index()
     {
+        // Ensure access control settings exist so the category appears
+        $this->ensureAccessSettingsSeed();
         $category = $_GET['category'] ?? 'business'; // Default to business category
         
         // Validate category
@@ -44,6 +46,68 @@ class SettingsController extends Controller
             'csrf_token' => $this->csrf()
         ]);
     }
+
+    private function ensureAccessSettingsSeed(): void
+    {
+        // Only seed when logged in as admin and settings are missing
+        try {
+            $adminId = $_SESSION['user_id'] ?? null;
+
+            // Seed production_team allowed features
+            if (!\App\Services\SettingsService::exists('access.roles.production_team.allowed_features')) {
+                $s = new \App\Models\Setting();
+                $s->create([
+                    'setting_key' => 'access.roles.production_team.allowed_features',
+                    'setting_value' => json_encode(['workspace', 'supplier_tracking', 'profile']),
+                    'setting_type' => 'json',
+                    'category' => 'access',
+                    'display_name' => 'Production Team Allowed Features',
+                    'description' => 'Controls which features the production team can access.',
+                    'validation_rules' => json_encode([]),
+                    'default_value' => json_encode(['workspace', 'supplier_tracking', 'profile']),
+                    'requires_restart' => 0,
+                    'modified_by' => $adminId
+                ]);
+            }
+
+            // Seed administrator allowed features (mostly informational; admins bypass checks)
+            if (!\App\Services\SettingsService::exists('access.roles.administrator.allowed_features')) {
+                $s = new \App\Models\Setting();
+                $s->create([
+                    'setting_key' => 'access.roles.administrator.allowed_features',
+                    'setting_value' => json_encode(['dashboard','customers','orders','production','supplier_tracking','workspace','users','settings','profile']),
+                    'setting_type' => 'json',
+                    'category' => 'access',
+                    'display_name' => 'Administrator Allowed Features',
+                    'description' => 'Features available to administrators (admins have full access).',
+                    'validation_rules' => json_encode([]),
+                    'default_value' => json_encode(['dashboard','customers','orders','production','supplier_tracking','workspace','users','settings','profile']),
+                    'requires_restart' => 0,
+                    'modified_by' => $adminId
+                ]);
+            }
+
+            // Optional default role template
+            if (!\App\Services\SettingsService::exists('access.roles.default.allowed_features')) {
+                $s = new \App\Models\Setting();
+                $s->create([
+                    'setting_key' => 'access.roles.default.allowed_features',
+                    'setting_value' => json_encode(['profile']),
+                    'setting_type' => 'json',
+                    'category' => 'access',
+                    'display_name' => 'Default Role Allowed Features',
+                    'description' => 'Fallback features for any unspecified roles.',
+                    'validation_rules' => json_encode([]),
+                    'default_value' => json_encode(['profile']),
+                    'requires_restart' => 0,
+                    'modified_by' => $adminId
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // Non-fatal: if DB not writable or table missing, just skip seeding
+            error_log('Settings access seed skipped: ' . $e->getMessage());
+        }
+    }
     
     /**
      * Update settings for a category
@@ -59,6 +123,14 @@ class SettingsController extends Controller
         
         $category = $_POST['category'] ?? '';
         $settings = $_POST['settings'] ?? [];
+
+        // Support JSON payload from client (backward compatibility)
+        if (is_string($settings)) {
+            $decoded = json_decode($settings, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $settings = $decoded;
+            }
+        }
         
         if (empty($category) || empty($settings)) {
             $this->json(['success' => false, 'message' => 'Missing category or settings data']);

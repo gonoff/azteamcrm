@@ -11,7 +11,7 @@ class CustomerController extends Controller
 {
     public function __construct()
     {
-        $this->requireAuth();
+        $this->requireFeature('customers');
     }
     
     public function index()

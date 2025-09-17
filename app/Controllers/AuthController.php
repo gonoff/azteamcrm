@@ -13,7 +13,8 @@ class AuthController extends Controller
         
         // If already logged in, redirect to dashboard
         if (isset($_SESSION['user_id'])) {
-            $this->redirect('/dashboard');
+            $target = \App\Services\AccessControl::defaultLandingRoute($_SESSION['user_role'] ?? '');
+            $this->redirect($target);
         }
         
         $this->view('auth/login', [
@@ -62,8 +63,9 @@ class AuthController extends Controller
             // Regenerate session ID for security
             session_regenerate_id(true);
             
-            // Redirect to dashboard
-            $this->redirect('/dashboard');
+            // Redirect to appropriate landing route by role
+            $target = \App\Services\AccessControl::defaultLandingRoute($_SESSION['user_role']);
+            $this->redirect($target);
         } else {
             $_SESSION['login_error'] = 'Invalid username or password.';
             $this->redirect('/login');

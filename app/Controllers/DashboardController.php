@@ -12,7 +12,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $this->requireAuth();
+        $this->requireFeature('dashboard');
         
         $order = new Order();
         $orderItem = new OrderItem();

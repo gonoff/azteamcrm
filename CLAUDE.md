@@ -6,9 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AZTEAM CRM/ERP is a custom apparel and merchandise order management system for a custom apparel company specializing in personalized clothing and promotional products. The system manages orders for corporate clients, teams, and organizations with various customization methods.
 
-**Current Database**: `azteamerp` (migrated from `azteamcrm`)
+**Development Database**: `azteamerp` (local XAMPP/LAMPP)
+**Production Database**: `u150881160_azteamte_erp` (Hostinger)
 
-**Current Phase**: Phase 2 - Successfully migrated to new database schema with separate customer management, improved order items with pricing, and simplified status tracking.
+**Current Phase**: Production Ready - Successfully deployed to production with full payment functionality, optimized performance indexes, and proper environment configuration.
 
 ## Development Workflow
 
@@ -83,6 +84,8 @@ Plan → Implement → Test → Fix Bugs → Test Again → Update Docs → Next
 ## Development Commands
 
 ### Database Setup
+
+#### Development Environment (Local)
 ```bash
 # Import database schema
 mysql -u root -p azteamerp < azteamerp.sql
@@ -90,14 +93,32 @@ mysql -u root -p azteamerp < azteamerp.sql
 # Access MySQL via XAMPP
 /opt/lampp/bin/mysql -u root -p
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your database credentials
-# Note: Default .env.example uses DB_DATABASE=azteamcrm, update to azteamerp for current database
+# Configure development environment
+cp .env.example .env.development
+# Edit .env.development for local database:
+# DB_HOST=localhost
+# DB_DATABASE=azteamerp  
+# DB_USERNAME=root
+# DB_PASSWORD=
 
 # Reset database (if needed)
 /opt/lampp/bin/mysql -u root -p -e "DROP DATABASE IF EXISTS azteamerp; CREATE DATABASE azteamerp;"
 /opt/lampp/bin/mysql -u root -p azteamerp < azteamerp.sql
+```
+
+#### Production Environment (Hostinger)
+```bash
+# Configure production environment  
+# Create .env file with Hostinger credentials:
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=u150881160_azteamte_erp
+# DB_USERNAME=u150881160_azteamte_admin
+# DB_PASSWORD=Net12net12!
+# DB_CHARSET=utf8mb4
+
+# Production database managed via Hostinger phpMyAdmin
+# Import schema via: azteamerp_production.sql
 ```
 
 ### XAMPP/LAMPP Management
@@ -123,14 +144,19 @@ tail -f /opt/lampp/logs/php_error_log
 
 ### Development Access
 ```bash
-# Application URL
+# Development URL
 http://localhost/azteamcrm
 
-# Default admin credentials
+# Production URL  
+https://erp.azteamtech.com (or your Hostinger domain)
+
+# Admin credentials (both environments)
 Username: haniel
 Password: [set in database]
+Username: marceli  
+Password: [set in database]
 
-# Fix session storage permissions if needed
+# Fix session storage permissions if needed (development)
 chmod -R 777 /opt/lampp/htdocs/azteamcrm/storage/
 ```
 
@@ -593,12 +619,26 @@ $this->isGet();                      // Check if GET request
 
 ## Database Schema Notes
 
+### Environment Differences
+
+#### Development Database (`azteamerp`)
+- **Location**: Local XAMPP/LAMPP MySQL
+- **Performance**: Missing some indexes (acceptable for development)
+- **Collation**: Mixed (users table uses utf8mb4_unicode_ci, others use utf8mb4_general_ci)
+
+#### Production Database (`u150881160_azteamte_erp`)  
+- **Location**: Hostinger MySQL hosting
+- **Performance**: ✅ Fully optimized with ALL performance indexes
+- **Collation**: Consistent utf8mb4_general_ci across all tables
+- **Optimization**: Complete index coverage for fast queries
+
 ### Key Tables
 - **users**: Authentication, roles, active status
 - **customers**: Customer data, addresses, contact info, status (PRIMARY KEY: customer_id)
 - **orders**: Links to customers, financial tracking, order status, payment status (PRIMARY KEY: order_id)
 - **order_items**: Products with single-status tracking, pricing, linked to orders (PRIMARY KEY: order_item_id)
-- **order_status_history**: Audit trail for status changes (future)
+- **order_payments**: Payment history with proper column names (PRIMARY KEY: payment_id)
+- **settings**: Application configuration with all required default values
 
 ### Important Fields
 - Boolean fields stored as TINYINT(1) (0/1)
@@ -609,6 +649,22 @@ $this->isGet();                      // Check if GET request
 - Generated columns for calculations (total_price in order_items)
 - Proper field naming: order_id, customer_id, order_item_id (not just 'id')
 - SET field type for multiple customization areas
+
+### Production Performance Indexes (Complete)
+```sql
+-- Customer indexes for search and filtering
+idx_customer_full_name, idx_customer_company_name, idx_customer_status, 
+idx_customer_zip_code, idx_customer_date_created
+
+-- Order indexes for dashboard and date filtering  
+idx_order_status, idx_payment_status, idx_order_date_created, idx_order_date_due
+
+-- Order item indexes for production dashboard
+idx_order_item_status, idx_order_item_product_type, idx_order_item_supplier_status
+
+-- Settings performance
+idx_settings_category
+```
 
 ## Common Development Tasks
 
@@ -690,7 +746,63 @@ $this->isGet();                      // Check if GET request
 - **Customer not selected after creation**: Use URL parameters (`?customer_id=X`) to pass customer ID across redirects, with JavaScript bridge as fallback
 - **Inline styles in views**: Move all inline styles to `/assets/css/app.css` and use CSS classes instead
 - **JavaScript style.display changes**: Use Bootstrap's `d-none` class with `classList.add/remove()` instead of direct style manipulation
-- **Recent updates**: Modified files tracking shows recent work on ProductionController, Customer model, Order model, OrderItem model, and layouts
+
+### Production-Specific Issues & Solutions
+
+#### Payment Functionality Fails
+**Symptoms**: Payment recording doesn't work, payment history empty
+**Root Cause**: Missing `order_payments` table or wrong column names
+**Solution**: 
+```sql
+-- Check if table exists and has correct structure
+DESCRIBE order_payments;
+
+-- If columns are wrong (amount, processed_by instead of payment_amount, recorded_by):
+ALTER TABLE `order_payments` CHANGE `amount` `payment_amount` decimal(10,2) NOT NULL;
+ALTER TABLE `order_payments` CHANGE `processed_by` `recorded_by` int(11) DEFAULT NULL;
+```
+
+#### Database Connection Fails in Production  
+**Symptoms**: "Access denied for user" or "Connection failed"
+**Root Cause**: Missing or incorrect `.env` file
+**Solution**:
+```bash
+# Create .env file with production credentials:
+DB_HOST=127.0.0.1
+DB_DATABASE=u150881160_azteamte_erp  
+DB_USERNAME=u150881160_azteamte_admin
+DB_PASSWORD=Net12net12!
+```
+
+#### Settings/Tax Functionality Fails
+**Symptoms**: Tax toggle doesn't work, dashboard shows errors
+**Root Cause**: Empty `settings` table
+**Solution**:
+```sql
+-- Add required settings
+INSERT INTO `settings` (`setting_key`, `setting_value`, `setting_type`, `category`, `display_name`) VALUES
+('business.ct_tax_rate', '0.0635', 'float', 'business', 'Connecticut Tax Rate'),
+('business.rush_order_threshold_days', '7', 'integer', 'business', 'Rush Order Threshold'),
+('ui.pagination.default_page_size', '20', 'integer', 'ui', 'Default Page Size');
+```
+
+#### Slow Performance in Production
+**Symptoms**: Dashboard takes >5 seconds, search timeouts  
+**Root Cause**: Missing database indexes
+**Solution**: Production should already have all indexes. Verify with:
+```sql
+SELECT TABLE_NAME, INDEX_NAME FROM information_schema.STATISTICS 
+WHERE TABLE_SCHEMA = 'u150881160_azteamte_erp' AND INDEX_NAME LIKE 'idx_%';
+```
+
+#### Application Loads but Features Don't Work
+**Symptoms**: Can login but specific modules fail
+**Root Cause**: Environment-specific path issues or missing tables
+**Debugging Steps**:
+1. Check `.env` file exists and has correct database name
+2. Verify all tables exist: `SHOW TABLES;`  
+3. Test specific failing queries in phpMyAdmin
+4. Check for missing foreign key constraints
 
 ### Debugging
 ```php
@@ -744,6 +856,59 @@ The application uses a semantic color system to improve usability and reduce cog
 - Focus states use primary blue for accessibility
 - Dark mode support included (future enhancement)
 
+## Production Deployment Checklist
+
+### Pre-Deployment (Development → Production)
+- [ ] **Environment Configuration**
+  - [ ] Create `.env` file with Hostinger credentials
+  - [ ] Verify database connection settings
+  - [ ] Test all environment-specific paths
+- [ ] **Database Migration**  
+  - [ ] Import `azteamerp_production.sql` to Hostinger database
+  - [ ] Verify all tables created with proper indexes
+  - [ ] Run settings population SQL
+  - [ ] Test database connectivity from application
+- [ ] **File Permissions**
+  - [ ] Verify storage/ directory permissions on hosting
+  - [ ] Test session file creation
+  - [ ] Check asset file accessibility
+
+### Post-Deployment Verification
+- [ ] **Core Functionality**
+  - [ ] User authentication works
+  - [ ] Dashboard loads with correct statistics  
+  - [ ] Customer management (search, create, edit)
+  - [ ] Order management (create, edit, view)
+  - [ ] Payment functionality (record payments, view history)
+  - [ ] Production dashboard and filtering
+- [ ] **Performance Testing**
+  - [ ] Dashboard loads quickly (< 2 seconds)
+  - [ ] Customer search responds quickly
+  - [ ] Date-based filtering is fast
+  - [ ] Production pages load without timeout
+- [ ] **Data Integrity**
+  - [ ] All foreign key constraints active
+  - [ ] No orphaned records
+  - [ ] Payment statuses consistent
+  - [ ] Order totals calculate correctly
+
+### Production Maintenance
+```bash
+# Monitor production database health
+# Run these queries periodically in phpMyAdmin:
+
+# Check for data integrity issues
+SELECT 'Orphaned Orders' as issue, COUNT(*) as count 
+FROM orders o LEFT JOIN customers c ON o.customer_id = c.customer_id 
+WHERE c.customer_id IS NULL;
+
+# Monitor performance (slow queries)
+SHOW PROCESSLIST;
+
+# Check index usage
+SHOW INDEX FROM orders;
+```
+
 ## Security Considerations
 - All user inputs sanitized via `Controller::sanitize()`
 - Prepared statements for all database queries
@@ -754,6 +919,8 @@ The application uses a semantic color system to improve usability and reduce cog
 - XSS protection headers in .htaccess
 - Role-based access control on sensitive operations
 - Self-modification protection (users cannot delete/deactivate themselves)
+- **Production**: Database credentials secured in .env file (not in code)
+- **Production**: Error logging enabled (not displayed to users)
 
 ## Testing Checklist for New Features
 

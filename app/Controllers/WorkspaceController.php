@@ -11,13 +11,7 @@ class WorkspaceController extends Controller
 {
     public function __construct()
     {
-        $this->requireAuth();
-        // Allow both production_team and administrator roles for testing
-        if (!in_array($_SESSION['user_role'], ['production_team', 'administrator'])) {
-            $_SESSION['error'] = 'Access denied. This feature is for production team members.';
-            $this->redirect('/dashboard');
-            exit;
-        }
+        $this->requireFeature('workspace');
     }
     
     /**
